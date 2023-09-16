@@ -6,15 +6,16 @@ plugins {
 
 android {
   namespace = "com.example.security"
-  compileSdk = 33
+  compileSdk = 34
   ndkVersion = "25.2.9519653"
 
   defaultConfig {
     applicationId = "com.example.security"
     minSdk = 21
+    //noinspection OldTargetApi
     targetSdk = 33
     versionCode = 1
-    versionName = "1.0"
+    versionName = "0.0.1"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     externalNativeBuild {
@@ -35,7 +36,27 @@ android {
     targetCompatibility = JavaVersion.VERSION_17
   }
   kotlinOptions {
+    apiVersion = "1.9"
+    languageVersion = "1.9"
     jvmTarget = "17"
+  }
+  buildFeatures {
+    compose = true
+  }
+  composeOptions {
+    kotlinCompilerExtensionVersion = libs.versions.compose.compiler.get()
+  }
+  packaging {
+    resources.excludes.add("META-INF/AL2.0")
+    resources.excludes.add("META-INF/LGPL2.1")
+  }
+  kotlin {
+    sourceSets.debug {
+      kotlin.srcDir("build/generated/ksp/debug/kotlin")
+    }
+    sourceSets.release {
+      kotlin.srcDir("build/generated/ksp/release/kotlin")
+    }
   }
   externalNativeBuild {
     cmake {
@@ -43,17 +64,26 @@ android {
       version = "3.22.1"
     }
   }
-  buildFeatures {
-    viewBinding = true
-  }
 }
 
 dependencies {
   implementation(libs.core.ktx)
   implementation(libs.appcompat)
-  implementation(libs.material)
-  implementation(libs.constraintlayout)
+
+  // Compose ---------------------------------------------------------------------------------------
+  implementation(libs.bundles.compose)
+
+  debugImplementation(libs.bundles.compose.debug)
+  // UI Tests
+  androidTestImplementation(libs.androidx.ui.test.junit4)
+
+  // Unit Test -------------------------------------------------------------------------------------
   testImplementation(libs.junit)
+
+  // Android Test ----------------------------------------------------------------------------------
   androidTestImplementation(libs.androidx.test.ext.junit)
   androidTestImplementation(libs.espresso.core)
+
+  // Leakcanary ------------------------------------------------------------------------------------
+  debugImplementation(libs.leakcanary.android)
 }
