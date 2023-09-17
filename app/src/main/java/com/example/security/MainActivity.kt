@@ -1,5 +1,6 @@
 package com.example.security
 
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -13,14 +14,20 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.example.security.security.JWEManager
 import com.example.security.ui.theme.AppTheme
 
 class MainActivity : ComponentActivity() {
+  private val jweManager = JWEManager(this)
+
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     // including IME animations, and go edge-to-edge
     // This also sets up the initial system bar style based on the platform theme
     enableEdgeToEdge()
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+      jweManager.jweTest()
+    }
 
     setContent {
       val darkTheme = isSystemInDarkTheme()

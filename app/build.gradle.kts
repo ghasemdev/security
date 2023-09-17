@@ -70,6 +70,8 @@ dependencies {
   implementation(libs.core.ktx)
   implementation(libs.appcompat)
 
+  implementation(libs.nimbus.jose.jwt)
+
   // Compose ---------------------------------------------------------------------------------------
   implementation(libs.bundles.compose)
 
