@@ -11,7 +11,7 @@ android {
 
   defaultConfig {
     applicationId = "com.example.security"
-    minSdk = 21
+    minSdk = 23
     //noinspection OldTargetApi
     targetSdk = 33
     versionCode = 1
