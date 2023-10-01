@@ -7,7 +7,7 @@ plugins {
 android {
   namespace = "com.example.security"
   compileSdk = 34
-  ndkVersion = "25.2.9519653"
+  ndkVersion = "25.1.8937393"
 
   defaultConfig {
     applicationId = "com.example.security"
