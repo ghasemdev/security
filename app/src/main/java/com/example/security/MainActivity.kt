@@ -22,7 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.security.security.SecretKeyManagerImpl
+import com.example.security.security.keystore.SecretKeyManagerImpl
 import com.example.security.security.utils.hasStrongBox
 import com.example.security.ui.theme.AppTheme
 import javax.crypto.SecretKey

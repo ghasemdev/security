@@ -1,8 +1,9 @@
-package com.example.security.security
+package com.example.security.security.keystore
 
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import com.example.security.security.keystore.internal.keystore
 import java.security.KeyStore.SecretKeyEntry
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
