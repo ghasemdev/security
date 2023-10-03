@@ -3,6 +3,9 @@ package com.example.security.security.keystore
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import com.example.security.security.keystore.SecretKeyManager.Companion.ALGORITHM
+import com.example.security.security.keystore.SecretKeyManager.Companion.BLOCK_MODE
+import com.example.security.security.keystore.SecretKeyManager.Companion.PADDING
 import com.example.security.security.keystore.internal.keystore
 import java.security.KeyStore.SecretKeyEntry
 import javax.crypto.KeyGenerator
@@ -17,15 +20,15 @@ class SecretKeyManagerImpl(
 
   override fun generateSecretKey(alias: String): SecretKey {
     return KeyGenerator
-      .getInstance(KeyProperties.KEY_ALGORITHM_AES)
+      .getInstance(ALGORITHM)
       .apply {
         init(
           KeyGenParameterSpec
             .Builder(alias, ENCRYPTION_PURPOSE)
             .setKeySize(KEY_SIZE)
-            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
-            .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA512)
+            .setBlockModes(BLOCK_MODE)
+            .setEncryptionPaddings(PADDING)
+            .setDigests(KeyProperties.DIGEST_SHA256)
             .setRandomizedEncryptionRequired(true)
             .setUserAuthenticationRequired(false)
             .apply {
