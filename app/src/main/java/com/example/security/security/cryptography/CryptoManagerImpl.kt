@@ -5,6 +5,8 @@ import com.example.security.security.keystore.SecretKeyManager
 import com.example.security.security.keystore.SecretKeyManager.Companion.ALGORITHM
 import com.example.security.security.keystore.SecretKeyManager.Companion.BLOCK_MODE
 import com.example.security.security.keystore.SecretKeyManager.Companion.PADDING
+import java.io.InputStream
+import java.io.OutputStream
 import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 
@@ -28,8 +30,36 @@ class CryptoManagerImpl(
     return EncryptionData(encryptCipher.doFinal(plaintext), gcmParameter.tLen, gcmParameter.iv)
   }
 
+  override fun encrypt(plaintext: ByteArray, outputStream: OutputStream): EncryptionData {
+    val encryptionData = encrypt(plaintext)
+    with(encryptionData) {
+      outputStream.use {
+        it.write(tagLength)
+        it.write(iv.size)
+        it.write(iv)
+        it.write(cipherText.size)
+        it.write(cipherText)
+      }
+    }
+    return encryptionData
+  }
+
   override fun decrypt(encryptionData: EncryptionData): ByteArray =
     decryptCipher(encryptionData.tagLength, encryptionData.iv).doFinal(encryptionData.cipherText)
+
+  override fun decrypt(inputStream: InputStream): ByteArray = inputStream.use {
+    val tagLength = it.read()
+
+    val ivSize = it.read()
+    val iv = ByteArray(ivSize)
+    it.read(iv)
+
+    val cipherTextSize = it.read()
+    val cipherText = ByteArray(cipherTextSize)
+    it.read(cipherText)
+
+    decrypt(EncryptionData(cipherText, tagLength, iv))
+  }
 
   companion object {
     private const val ALIAS_KEY = "crypto-aes-256-gcm-no-padding"
