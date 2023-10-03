@@ -62,8 +62,10 @@ class MainActivity : ComponentActivity() {
           Text(text = "Aliases: $aliases")
           Button(
             onClick = {
-              secretKey = secretKeyManager.getOrGenerateSecretKey(alias)
-              isKeyGenerated = !isKeyGenerated
+              if (alias.isNotBlank()) {
+                secretKey = secretKeyManager.getOrGenerateSecretKey(alias)
+                isKeyGenerated = !isKeyGenerated
+              }
             }
           ) {
             Text(text = "Generate Key")
