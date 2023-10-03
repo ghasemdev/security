@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalEncodingApi::class)
-
 package com.example.security
 
 import android.os.Bundle
@@ -25,16 +23,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.security.data.datastore.SettingsStorage
 import com.example.security.security.cryptography.CryptoManagerImpl
 import com.example.security.security.keystore.SecretKeyManagerImpl
 import com.example.security.security.utils.hasStrongBox
 import com.example.security.ui.theme.AppTheme
-import java.io.File
-import kotlin.io.encoding.Base64
-import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,16 +47,17 @@ class MainActivity : ComponentActivity() {
       keyManager = secretKeyManager
     )
 
+    val settingsStorage = SettingsStorage(
+      context = applicationContext,
+      cryptoManager = cryptoManager
+    )
+
     setContent {
       val darkTheme = isSystemInDarkTheme()
       val coroutineScope = rememberCoroutineScope()
 
-      var password by remember { mutableStateOf("") }
-
+      var text by remember { mutableStateOf("") }
       var plainText by remember { mutableStateOf("") }
-      var cipherText by remember { mutableStateOf("") }
-      var iv by remember { mutableStateOf("") }
-      var tagLength by remember { mutableIntStateOf(0) }
 
       AppTheme(darkTheme = darkTheme) {
         Column(
@@ -70,53 +67,31 @@ class MainActivity : ComponentActivity() {
           horizontalAlignment = Alignment.CenterHorizontally,
           verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-          TextField(value = password, onValueChange = { password = it })
+          TextField(value = text, onValueChange = { text = it })
 
           Button(
             onClick = {
               coroutineScope.launch(Dispatchers.IO) {
-                val file = File(cacheDir, "crypto")
-                if (file.exists().not()) {
-                  file.createNewFile()
-                }
-
-                val (mCipherText, mTagLength, mIV) = cryptoManager.encrypt(
-                  plaintext = password.encodeToByteArray(),
-                  outputStream = file.outputStream()
-                )
-
-                withContext(Dispatchers.Main) {
-                  // using decodeToString/encodeToByteArray change the size of iv
-                  cipherText = Base64.encode(mCipherText)
-                  iv = Base64.encode(mIV)
-                  tagLength = mTagLength
-                }
+                settingsStorage.setUsername(text)
               }
             }
           ) {
-            Text(text = "Encrypt")
+            Text(text = "Save")
           }
 
           Button(
             onClick = {
               coroutineScope.launch(Dispatchers.IO) {
-                val file = File(cacheDir, "crypto")
-                val mPlainText = cryptoManager.decrypt(inputStream = file.inputStream())
-
-                withContext(Dispatchers.Main) {
-                  // using decodeToString/encodeToByteArray change the size of iv
-                  plainText = mPlainText.decodeToString()
+                settingsStorage.settings.collectLatest {
+                  plainText = it.username
                 }
               }
             }
           ) {
-            Text(text = "Decrypt")
+            Text(text = "Load")
           }
 
           Text(text = "plainText: $plainText")
-          Text(text = "cipherText: $cipherText")
-          Text(text = "iv: $iv")
-          Text(text = "tagLength: $tagLength")
         }
       }
 

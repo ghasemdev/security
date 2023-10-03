@@ -2,6 +2,7 @@
 plugins {
   alias(libs.plugins.com.android.application)
   alias(libs.plugins.org.jetbrains.kotlin.android)
+  alias(libs.plugins.org.jetbrains.kotlin.plugin.serialization)
 }
 
 android {
@@ -69,6 +70,11 @@ android {
 dependencies {
   implementation(libs.core.ktx)
   implementation(libs.appcompat)
+
+  // Serialization
+  implementation(libs.kotlinx.serialization.json)
+  // Data Store
+  implementation(libs.androidx.datastore.preferences)
 
   // Compose ---------------------------------------------------------------------------------------
   implementation(libs.bundles.compose)
