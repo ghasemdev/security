@@ -1,5 +1,6 @@
 package com.example.security.security.cryptography
 
+import com.example.security.security.cryptography.model.EncryptionData
 import com.example.security.security.keystore.SecretKeyManager
 import com.example.security.security.keystore.SecretKeyManager.Companion.ALGORITHM
 import com.example.security.security.keystore.SecretKeyManager.Companion.BLOCK_MODE
@@ -21,14 +22,14 @@ class CryptoManagerImpl(
       init(Cipher.DECRYPT_MODE, keyManager.getSecretKey(ALIAS_KEY), GCMParameterSpec(tagLength, iv))
     }
 
-  override fun encrypt(plaintext: ByteArray): Triple<ByteArray, Int, ByteArray> {
+  override fun encrypt(plaintext: ByteArray): EncryptionData {
     val encryptCipher = encryptCipher()
     val gcmParameter = encryptCipher.parameters.getParameterSpec(GCMParameterSpec::class.java)
-    return Triple(encryptCipher.doFinal(plaintext), gcmParameter.tLen, gcmParameter.iv)
+    return EncryptionData(encryptCipher.doFinal(plaintext), gcmParameter.tLen, gcmParameter.iv)
   }
 
-  override fun decrypt(ciphertext: ByteArray, tagLength: Int, iv: ByteArray): ByteArray =
-    decryptCipher(tagLength, iv).doFinal(ciphertext)
+  override fun decrypt(encryptionData: EncryptionData): ByteArray =
+    decryptCipher(encryptionData.tagLength, encryptionData.iv).doFinal(encryptionData.cipherText)
 
   companion object {
     private const val ALIAS_KEY = "crypto-aes-256-gcm-no-padding"
