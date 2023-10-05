@@ -69,10 +69,10 @@ android {
 dependencies {
   implementation(libs.core.ktx)
   implementation(libs.appcompat)
+  implementation(libs.androidx.security.crypto.ktx)
 
   // Compose ---------------------------------------------------------------------------------------
   implementation(libs.bundles.compose)
-  implementation(libs.androidx.security.crypto.ktx)
 
   debugImplementation(libs.bundles.compose.debug)
   // UI Tests
