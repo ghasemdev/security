@@ -2,6 +2,8 @@
 plugins {
   alias(libs.plugins.com.android.application)
   alias(libs.plugins.org.jetbrains.kotlin.android)
+  id("kotlin-kapt")
+  id("com.google.dagger.hilt.android")
 }
 
 android {
@@ -66,10 +68,18 @@ android {
   }
 }
 
+kapt {
+  correctErrorTypes = true
+}
+
 dependencies {
   implementation(libs.core.ktx)
   implementation(libs.appcompat)
   implementation(libs.androidx.security.crypto.ktx)
+
+  // Hilt
+  implementation(libs.hilt.android)
+  kapt(libs.hilt.compiler)
 
   // Compose ---------------------------------------------------------------------------------------
   implementation(libs.bundles.compose)
