@@ -72,6 +72,7 @@ dependencies {
 
   // Compose ---------------------------------------------------------------------------------------
   implementation(libs.bundles.compose)
+  implementation(libs.androidx.security.crypto.ktx)
 
   debugImplementation(libs.bundles.compose.debug)
   // UI Tests
