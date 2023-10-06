@@ -24,12 +24,14 @@ class CryptoManagerImpl(
       init(Cipher.DECRYPT_MODE, keyManager.getSecretKey(ALIAS_KEY), GCMParameterSpec(tagLength, iv))
     }
 
+  @Synchronized
   override fun encrypt(plaintext: ByteArray): EncryptionData {
     val encryptCipher = encryptCipher()
     val gcmParameter = encryptCipher.parameters.getParameterSpec(GCMParameterSpec::class.java)
     return EncryptionData(encryptCipher.doFinal(plaintext), gcmParameter.tLen, gcmParameter.iv)
   }
 
+  @Synchronized
   override fun encrypt(plaintext: ByteArray, outputStream: OutputStream): EncryptionData {
     val encryptionData = encrypt(plaintext)
     with(encryptionData) {
@@ -44,9 +46,11 @@ class CryptoManagerImpl(
     return encryptionData
   }
 
+  @Synchronized
   override fun decrypt(encryptionData: EncryptionData): ByteArray =
     decryptCipher(encryptionData.tagLength, encryptionData.iv).doFinal(encryptionData.cipherText)
 
+  @Synchronized
   override fun decrypt(inputStream: InputStream): ByteArray = inputStream.use {
     val tagLength = it.read()
 

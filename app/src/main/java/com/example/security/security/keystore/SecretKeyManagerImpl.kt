@@ -14,10 +14,12 @@ import javax.crypto.SecretKey
 class SecretKeyManagerImpl(
   private val isSupportStrongBox: Boolean
 ) : SecretKeyManager {
+  @Synchronized
   override fun getOrGenerateSecretKey(alias: String): SecretKey {
     return getSecretKey(alias) ?: generateSecretKey(alias)
   }
 
+  @Synchronized
   override fun generateSecretKey(alias: String): SecretKey {
     return KeyGenerator
       .getInstance(ALGORITHM)
@@ -44,11 +46,13 @@ class SecretKeyManagerImpl(
       .generateKey()
   }
 
+  @Synchronized
   override fun getSecretKey(alias: String): SecretKey? {
     val entry = keystore.getEntry(alias, null) as? SecretKeyEntry
     return entry?.secretKey
   }
 
+  @Synchronized
   override fun remove(alias: String): Boolean {
     return try {
       keystore.deleteEntry(alias)
@@ -58,6 +62,7 @@ class SecretKeyManagerImpl(
     }
   }
 
+  @Synchronized
   override fun getAliases(): List<String> = keystore.aliases().toList()
 
   private companion object {
