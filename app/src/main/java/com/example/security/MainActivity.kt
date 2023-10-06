@@ -15,7 +15,6 @@ import androidx.compose.material.Text
 import androidx.compose.material.TextField
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -31,6 +30,8 @@ import com.example.security.ui.theme.AppTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,6 +53,8 @@ class MainActivity : ComponentActivity() {
       cryptoManager = cryptoManager
     )
 
+    val mutex = Mutex()
+
     setContent {
       val darkTheme = isSystemInDarkTheme()
       val coroutineScope = rememberCoroutineScope()
@@ -72,7 +75,9 @@ class MainActivity : ComponentActivity() {
           Button(
             onClick = {
               coroutineScope.launch(Dispatchers.IO) {
-                settingsStorage.setUsername(text)
+                mutex.withLock {
+                  settingsStorage.setUsername(text)
+                }
               }
             }
           ) {
@@ -82,8 +87,10 @@ class MainActivity : ComponentActivity() {
           Button(
             onClick = {
               coroutineScope.launch(Dispatchers.IO) {
-                settingsStorage.settings.collectLatest {
-                  plainText = it.username
+                mutex.withLock {
+                  settingsStorage.settings.collectLatest {
+                    plainText = it.username
+                  }
                 }
               }
             }
