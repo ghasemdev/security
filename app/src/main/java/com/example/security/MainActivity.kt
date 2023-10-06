@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.security.security.cryptography.CryptoManagerImpl
+import com.example.security.security.cryptography.model.EncryptionData
 import com.example.security.security.keystore.SecretKeyManagerImpl
 import com.example.security.security.utils.hasStrongBox
 import com.example.security.ui.theme.AppTheme
@@ -80,7 +81,7 @@ class MainActivity : ComponentActivity() {
           Button(
             onClick = {
               plainText = cryptoManager
-                .decrypt(Base64.decode(cipherText), tagLength, Base64.decode(iv))
+                .decrypt(EncryptionData(Base64.decode(cipherText), tagLength, Base64.decode(iv)))
                 .decodeToString()
             }
           ) {
