@@ -30,8 +30,6 @@ import com.example.security.ui.theme.AppTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,8 +51,6 @@ class MainActivity : ComponentActivity() {
       cryptoManager = cryptoManager
     )
 
-    val mutex = Mutex()
-
     setContent {
       val darkTheme = isSystemInDarkTheme()
       val coroutineScope = rememberCoroutineScope()
@@ -75,9 +71,7 @@ class MainActivity : ComponentActivity() {
           Button(
             onClick = {
               coroutineScope.launch(Dispatchers.IO) {
-                mutex.withLock {
-                  settingsStorage.setUsername(text)
-                }
+                settingsStorage.setUsername(text)
               }
             }
           ) {
@@ -87,10 +81,8 @@ class MainActivity : ComponentActivity() {
           Button(
             onClick = {
               coroutineScope.launch(Dispatchers.IO) {
-                mutex.withLock {
-                  settingsStorage.settings.collectLatest {
-                    plainText = it.username
-                  }
+                settingsStorage.settings.collectLatest {
+                  plainText = it.username
                 }
               }
             }
