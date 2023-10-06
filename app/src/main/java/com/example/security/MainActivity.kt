@@ -34,7 +34,8 @@ import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -62,6 +63,8 @@ class MainActivity : ComponentActivity() {
       var iv by remember { mutableStateOf("") }
       var tagLength by remember { mutableIntStateOf(0) }
 
+      val mutex = Mutex()
+
       AppTheme(darkTheme = darkTheme) {
         Column(
           modifier = Modifier
@@ -75,17 +78,17 @@ class MainActivity : ComponentActivity() {
           Button(
             onClick = {
               coroutineScope.launch(Dispatchers.IO) {
-                val file = File(cacheDir, "crypto")
-                if (file.exists().not()) {
-                  file.createNewFile()
-                }
+                mutex.withLock {
+                  val file = File(cacheDir, "crypto")
+                  if (file.exists().not()) {
+                    file.createNewFile()
+                  }
 
-                val (mCipherText, mTagLength, mIV) = cryptoManager.encrypt(
-                  plaintext = password.encodeToByteArray(),
-                  outputStream = file.outputStream()
-                )
+                  val (mCipherText, mTagLength, mIV) = cryptoManager.encrypt(
+                    plaintext = password.encodeToByteArray(),
+                    outputStream = file.outputStream()
+                  )
 
-                withContext(Dispatchers.Main) {
                   // using decodeToString/encodeToByteArray change the size of iv
                   cipherText = Base64.encode(mCipherText)
                   iv = Base64.encode(mIV)
@@ -100,10 +103,10 @@ class MainActivity : ComponentActivity() {
           Button(
             onClick = {
               coroutineScope.launch(Dispatchers.IO) {
-                val file = File(cacheDir, "crypto")
-                val mPlainText = cryptoManager.decrypt(inputStream = file.inputStream())
+                mutex.withLock {
+                  val file = File(cacheDir, "crypto")
+                  val mPlainText = cryptoManager.decrypt(inputStream = file.inputStream())
 
-                withContext(Dispatchers.Main) {
                   // using decodeToString/encodeToByteArray change the size of iv
                   plainText = mPlainText.decodeToString()
                 }
