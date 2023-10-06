@@ -29,6 +29,8 @@ import com.example.security.ui.theme.AppTheme
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,6 +40,8 @@ class MainActivity : ComponentActivity() {
     enableEdgeToEdge()
 
     val cryptoFile = CryptoFile(applicationContext)
+
+    val mutex = Mutex()
 
     setContent {
       val darkTheme = isSystemInDarkTheme()
@@ -58,9 +62,11 @@ class MainActivity : ComponentActivity() {
 
           Button(
             onClick = {
-              coroutineScope.launch {
-                cryptoFile.openFileOutput {
-                  it.write(password.encodeToByteArray())
+              coroutineScope.launch(Dispatchers.IO) {
+                mutex.withLock {
+                  cryptoFile.openFileOutput {
+                    it.write(password.encodeToByteArray())
+                  }
                 }
               }
             }
@@ -71,9 +77,11 @@ class MainActivity : ComponentActivity() {
           Button(
             onClick = {
               coroutineScope.launch(Dispatchers.IO) {
-                runCatching { // Catch IO exception
-                  cryptoFile.openFileInput {
-                    plainText = it.readBytes().decodeToString()
+                mutex.withLock {
+                  runCatching { // Catch IO exception
+                    cryptoFile.openFileInput {
+                      plainText = it.readBytes().decodeToString()
+                    }
                   }
                 }
               }
