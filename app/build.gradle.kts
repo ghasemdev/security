@@ -70,6 +70,9 @@ dependencies {
   implementation(libs.core.ktx)
   implementation(libs.appcompat)
 
+  implementation(libs.trustkit)
+  implementation(libs.okhttp)
+
   // Compose ---------------------------------------------------------------------------------------
   implementation(libs.bundles.compose)
 

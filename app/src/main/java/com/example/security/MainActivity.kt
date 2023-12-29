@@ -1,6 +1,7 @@
 package com.example.security
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -13,11 +14,21 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.lifecycleScope
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import com.datatheorem.android.trustkit.TrustKit
+import com.datatheorem.android.trustkit.pinning.OkHttp3Helper
 import com.example.security.ui.theme.AppTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+
+    sslPining()
+
     // including IME animations, and go edge-to-edge
     // This also sets up the initial system bar style based on the platform theme
     enableEdgeToEdge()
@@ -50,6 +61,29 @@ class MainActivity : ComponentActivity() {
           ) { darkTheme },
         )
         onDispose {}
+      }
+    }
+  }
+
+  private fun sslPining() {
+    // Using the default path—res/xml/network_security_config.xml.
+    TrustKit.initializeWithNetworkSecurityConfiguration(this@MainActivity)
+
+    lifecycleScope.launch(Dispatchers.IO) {
+      // OkHttp 3.3.x and higher
+      val client: OkHttpClient = OkHttpClient.Builder()
+        .sslSocketFactory(OkHttp3Helper.getSSLSocketFactory(), OkHttp3Helper.getTrustManager())
+        .addInterceptor(OkHttp3Helper.getPinningInterceptor())
+        .followRedirects(false)
+        .followSslRedirects(false)
+        .build()
+
+      val request: Request = Request.Builder()
+        .url("https://moviesapi.ir/api/v1/movies")
+        .build()
+
+      client.newCall(request).execute().use { response ->
+        Log.i("SSL", "sslPining: ${response.body!!.string()}")
       }
     }
   }
