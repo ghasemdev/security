@@ -2,6 +2,7 @@
 plugins {
   alias(libs.plugins.com.android.application)
   alias(libs.plugins.org.jetbrains.kotlin.android)
+  alias(libs.plugins.org.jetbrains.kotlin.serialization)
 }
 
 android {
@@ -71,6 +72,7 @@ dependencies {
   implementation(libs.appcompat)
 
   implementation(libs.nimbus.jose.jwt)
+  implementation(libs.jetbrains.kotlinx.serialization.json)
 
   // Compose ---------------------------------------------------------------------------------------
   implementation(libs.bundles.compose)

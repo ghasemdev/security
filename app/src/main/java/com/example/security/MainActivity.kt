@@ -14,11 +14,11 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.example.security.security.JWEManager
+import com.example.security.security.JWSAuthenticator
 import com.example.security.ui.theme.AppTheme
 
 class MainActivity : ComponentActivity() {
-  private val jweManager = JWEManager(this)
+  private val jwsAuthenticator = JWSAuthenticator()
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -26,7 +26,7 @@ class MainActivity : ComponentActivity() {
     // This also sets up the initial system bar style based on the platform theme
     enableEdgeToEdge()
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-      jweManager.jweTest()
+      jwsAuthenticator.jwsTest()
     }
 
     setContent {
