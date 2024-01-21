@@ -16,7 +16,8 @@ import java.text.ParseException
  * The base abstract class for unsecured (`alg=none`), JSON Web Signature
  * (JWS) and JSON Web Encryption (JWE) headers.
  *
- * The header may also include [getCustomParams]; these will be serialised and parsed along the registered ones.
+ * The header may also include [getCustomParams];
+ * these will be serialised and parsed along the registered ones.
  */
 open class Header {
   /** The algorithm (`alg`) parameter. */
@@ -47,8 +48,7 @@ open class Header {
     private set
 
   /**
-   * Gets the names of all included parameters (registered and custom) in
-   * the header instance.
+   * Gets the names of all included parameters (registered and custom) in the header instance.
    *
    * @return The included parameters.
    */
@@ -75,18 +75,13 @@ open class Header {
   /**
    * Creates a new abstract header.
    *
-   * @param algorithm             The algorithm (`alg`) parameter.
-   * @param type             The type (`typ`) parameter,
-   *                        (`null`) if not specified.
-   * @param contentType             The content type (`cty`) parameter,
-   *                        (`null`) if not specified.
-   * @param criticalParams            The names of the critical header
-   *                        (`crit`) parameters, empty set or
+   * @param algorithm       The algorithm (`alg`) parameter.
+   * @param type            The type (`typ`) parameter, (`null`) if not specified.
+   * @param contentType     The content type (`cty`) parameter, (`null`) if not specified.
+   * @param criticalParams  The names of the critical header (`crit`) parameters, empty set or
    *                        (`null`) if none.
-   * @param customParams    The custom parameters, empty map or
-   *                        (`null`) if none.
-   * @param parsedBase64URL The parsed Base64URL, (`null`) if the
-   *                        header is created from scratch.
+   * @param customParams    The custom parameters, empty map or (`null`) if none.
+   * @param parsedBase64URL The parsed Base64URL, (`null`) if the header is created from scratch.
    */
   protected constructor(
     algorithm: Algorithm,
@@ -173,8 +168,7 @@ open class Header {
    * validation and authenticated JWE decryption).
    *
    * @return The original parsed Base64URL representation of the header,
-   * or a new Base64URL representation if the header was created
-   * from scratch.
+   * or a new Base64URL representation if the header was created from scratch.
    */
   fun toBase64URL(): Base64URL? {
     return if (parsedBase64URL == null) {
@@ -193,10 +187,9 @@ open class Header {
    * The algorithm type (none, JWS or JWE) is determined by inspecting
    * the algorithm name for "none" and the presence of an "enc" parameter.
    *
-   * @param json The JSON object to parse. Must not be `null`.
+   * @param json The JSON object to parse.
    *
-   * @return The algorithm, an instance of [Algorithm.NONE],
-   * [JWSAlgorithm] or [JWEAlgorithm]. `null` if not found.
+   * @return The algorithm, an instance of [Algorithm.NONE], [JWSAlgorithm] or [JWEAlgorithm]. `null` if not found.
    *
    * @throws ParseException If the `alg` parameter couldn't be parsed.
    */
@@ -219,36 +212,17 @@ open class Header {
   }
 
   /**
-   * Parses a [PlainHeader], [JWSHeader] or [JWEHeader]
-   * from the specified JSON object.
+   * Join a [PlainHeader], [JWSHeader] or [JWEHeader] with an Unprotected header.
    *
-   * @param jsonObject      The JSON object to parse. Must not be
-   * `null`.
+   * @param unprotected     The Unprotected header. `null` if not applicable.
    *
    * @return The header.
    *
-   * @throws ParseException If the specified JSON object doesn't
-   * represent a valid header.
+   * @throws ParseException If the specified Unprotected header cannot
+   * be merged to protected header.
    */
   @Throws(ParseException::class)
-  open fun parse(jsonObject: Map<String?, Any?>?): com.nimbusds.jose.Header? {
-    return com.nimbusds.jose.Header.parse(jsonObject, null)
-  }
-
-  /**
-   * Join a [PlainHeader], [JWSHeader] or [JWEHeader]
-   * with an Unprotected header.
-   *
-   * @param unprotected     The Unprotected header. `null`
-   * if not applicable.
-   *
-   * @return The header.
-   *
-   * @throws ParseException If the specified Unprotected header can not be
-   * merged to protected header.
-   */
-  @Throws(ParseException::class)
-  open fun join(unprotected: UnprotectedHeader): Header {
+  fun join(unprotected: UnprotectedHeader): Header {
     val jsonObject = toJSONObject().toMutableMap()
     try {
       HeaderValidation.ensureDisjoint(this, unprotected)
@@ -256,39 +230,46 @@ open class Header {
       throw ParseException(e.message, 0)
     }
     jsonObject.putAll(unprotected.toJSONObject())
-    return Header.parse(jsonObject, null)
+    return parse(jsonObject, null)
   }
 
   /**
-   * Parses a [PlainHeader], [JWSHeader] or [JWEHeader]
-   * from the specified JSON object.
+   * Parses a [PlainHeader], [JWSHeader] or [JWEHeader] from the specified JSON object.
    *
-   * @param jsonObject      The JSON object to parse. Must not be
-   * `null`.
-   * @param parsedBase64URL The original parsed Base64URL, `null`
-   * if not applicable.
+   * @param jsonObject      The JSON object to parse.
    *
    * @return The header.
    *
-   * @throws ParseException If the specified JSON object doesn't
-   * represent a valid header.
+   * @throws ParseException If the specified JSON object doesn't represent a valid header.
+   */
+  @Throws(ParseException::class)
+  fun parse(jsonObject: Map<String, Any>): Header = parse(jsonObject, null)
+
+  /**
+   * Parses a [PlainHeader], [JWSHeader] or [JWEHeader] from the specified JSON object.
+   *
+   * @param jsonObject      The JSON object to parse
+   * @param parsedBase64URL The original parsed Base64URL, `null` if not applicable.
+   *
+   * @return The header.
+   *
+   * @throws ParseException If the specified JSON object doesn't represent a valid header.
    */
   @Throws(ParseException::class)
   fun parse(jsonObject: Map<String, Any>, parsedBase64URL: Base64URL?): Header {
-//    val algName = JSONObjectUtils.getString(jsonObject, HeaderParameterNames.ALGORITHM)
-//    return if (jsonObject.containsKey(HeaderParameterNames.ENCRYPTION_ALGORITHM)) {
-//      // JWE
-//      JWEHeader.parse(jsonObject, parsedBase64URL)
-//    } else if (Algorithm.NONE.name == algName) {
-//      // Plain
-//      PlainHeader.parse(jsonObject, parsedBase64URL)
-//    } else if (jsonObject.containsKey(HeaderParameterNames.ALGORITHM)) {
-//      // JWS
-//      JWSHeader.parse(jsonObject, parsedBase64URL)
-//    } else {
-//      throw ParseException("Missing \"alg\" in header JSON object", 0)
-//    }
-    return Header()
+    val algName = JSONObjectUtils.getString(jsonObject, HeaderParameterNames.ALGORITHM)
+
+    if (jsonObject.containsKey(HeaderParameterNames.ENCRYPTION_ALGORITHM)) {
+      // JWE
+//      return JWEHeader.parse(jsonObject, parsedBase64URL)
+    } else if (Algorithm.NONE.name == algName) {
+      // Plain
+//     return PlainHeader.parse(jsonObject, parsedBase64URL)
+    } else if (jsonObject.containsKey(HeaderParameterNames.ALGORITHM)) {
+      // JWS
+//     return JWSHeader.parse(jsonObject, parsedBase64URL)
+    }
+    throw ParseException("Missing \"alg\" in header JSON object", 0)
   }
 
   /**
@@ -301,7 +282,7 @@ open class Header {
    * @throws ParseException If the specified JSON object string doesn't represent a valid header.
    */
   @Throws(ParseException::class)
-  fun parse(jsonString: String): Header? = parse(jsonString, null)
+  fun parse(jsonString: String): Header = parse(jsonString, null)
 
   /**
    * Parses a [PlainHeader], [JWSHeader] or [JWEHeader] from the specified JSON object string.
@@ -314,9 +295,9 @@ open class Header {
    * @throws ParseException If the specified JSON object string doesn't represent a valid header.
    */
   @Throws(ParseException::class)
-  fun parse(jsonString: String, parsedBase64URL: Base64URL?): Header? {
+  fun parse(jsonString: String, parsedBase64URL: Base64URL?): Header {
     val jsonObject = JSONObjectUtils.parse(jsonString, MAX_HEADER_STRING_LENGTH)
-    return Header.parse(jsonObject, parsedBase64URL)
+    return parse(jsonObject, parsedBase64URL)
   }
 
   /**
@@ -329,14 +310,13 @@ open class Header {
    * @throws ParseException If the specified Base64URL doesn't represent a valid header.
    */
   @Throws(ParseException::class)
-  fun parse(base64URL: Base64URL): Header? = parse(base64URL.decodeToString(), base64URL)
+  fun parse(base64URL: Base64URL): Header = parse(base64URL.decodeToString(), base64URL)
 
   companion object {
     /**
      * The max allowed string length when parsing a JOSE header (after the
      * BASE64URL decoding). 20K chars should be enough to accommodate
-     * JOSE headers with an X.509 certificate chain in the `x5c`
-     * header parameter.
+     * JOSE headers with an X.509 certificate chain in the `x5c` header parameter.
      */
     const val MAX_HEADER_STRING_LENGTH = 20_000
 
