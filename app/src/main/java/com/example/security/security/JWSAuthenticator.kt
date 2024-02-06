@@ -13,12 +13,14 @@ import com.nimbusds.jose.JWSObject
 import com.nimbusds.jose.Payload
 import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jose.crypto.RSASSAVerifier
-import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
+import com.nimbusds.jose.jwk.RSAKey
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.PrivateKey
+import java.security.Signature
 import java.security.cert.Certificate
+import java.security.interfaces.RSAPublicKey
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
@@ -62,29 +64,29 @@ class JWSAuthenticator {
   @RequiresApi(Build.VERSION_CODES.M)
   fun jwsTest() {
     // Generate an RSA key pair
-//    val rsaKeyPair = getRSAKey()
-//    val rsaKey = RSAKey
-//      .Builder(rsaKeyPair.public as RSAPublicKey)
-//      .privateKey(rsaKeyPair.private)
-//      .build()
-//    val rsaPublicKey = rsaKey.toRSAPublicKey()
-//    val rsaPrivateKey = rsaKeyPair.private
+    val rsaKeyPair = getRSAKey()
+    val rsaKey = RSAKey
+      .Builder(rsaKeyPair.public as RSAPublicKey)
+      .privateKey(rsaKeyPair.private)
+      .build()
+    val rsaPublicKey = rsaKey.toRSAPublicKey()
+    val rsaPrivateKey = rsaKeyPair.private
 
     // RSA signatures require a public and private RSA key pair,
     // the public key must be made known to the JWS recipient to
     // allow the signatures to be verified.
-    val rsaJWK = RSAKeyGenerator(2048)
-      .keyID("123")
-      .generate()
-    val rsaPublicJWK = rsaJWK.toPublicJWK()
+//    val rsaJWK = RSAKeyGenerator(2048)
+//      .keyID("123")
+//      .generate()
+//    val rsaPublicJWK = rsaJWK.toPublicJWK()
 
     // Create RSA-signer with the private key
-    val signer = RSASSASigner(rsaJWK)
+    val signer = RSASSASigner(rsaPrivateKey)
 
     // Prepare JWS object with simple string as payload
     var jwsObject = JWSObject(
       JWSHeader.Builder(JWSAlgorithm.RS256)
-        .keyID(rsaJWK.keyID)
+        .keyID(rsaKey.keyID)
         .build(),
       Payload("In RSA we trust!")
     )
@@ -98,7 +100,7 @@ class JWSAuthenticator {
 
     // To parse the JWS and verify it, e.g. on client-side
     jwsObject = JWSObject.parse(jwsString)
-    val verifier = RSASSAVerifier(rsaPublicJWK)
+    val verifier = RSASSAVerifier(rsaPublicKey)
 
     jwsObject.verify(verifier)
 
@@ -107,7 +109,23 @@ class JWSAuthenticator {
     Log.d("aaa", "payload: ${jwsObject.payload}")
     Log.d("aaa", "header: ${jwsObject.header}")
 
-    Log.d("aaa", "UrlSafe: ${Base64.UrlSafe.encode("a".encodeToByteArray())}")
+    val header = """{"alg":"RS256"}"""
+    val base64Header = Base64.UrlSafe.encode(header.encodeToByteArray())
+    val originalHeader = Base64.UrlSafe.decode(base64Header).decodeToString()
+    Log.d("aaa", "custom: $originalHeader $base64Header")
+
+    val payload = "In RSA we trust!".trim()
+    val base64Payload = Base64.UrlSafe.encode(payload.encodeToByteArray())
+    val originalPayload = Base64.UrlSafe.decode(base64Payload).decodeToString()
+    Log.d("aaa", "custom: $originalPayload $base64Payload")
+
+    val signingData = "${base64Header.replace("=", "")}.${base64Payload.replace("=", "")}"
+    val sign = Signature.getInstance("SHA256withRSA")
+    sign.initSign(rsaKeyPair.private)
+    sign.update(signingData.encodeToByteArray())
+    val signedData = Base64.UrlSafe.encode(sign.sign()).replace("=", "")
+    val jws = "$signingData.$signedData"
+    Log.d("aaa", "custom jws: $jws")
   }
 
   companion object {
