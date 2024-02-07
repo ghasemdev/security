@@ -7,6 +7,9 @@ import android.security.keystore.KeyProperties.PURPOSE_SIGN
 import android.security.keystore.KeyProperties.PURPOSE_VERIFY
 import android.util.Log
 import androidx.annotation.RequiresApi
+import com.example.security.json.jsonStringify
+import com.example.security.json.sortedEntries
+import com.example.security.json.to
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.JWSObject
@@ -109,7 +112,7 @@ class JWSAuthenticator {
     Log.d("aaa", "payload: ${jwsObject.payload}")
     Log.d("aaa", "header: ${jwsObject.header}")
 
-    val header = """{"alg":"RS256"}"""
+    val header = sortedEntries("alg" to "RS256").jsonStringify()
     val base64Header = Base64.UrlSafe.encode(header.encodeToByteArray())
     val originalHeader = Base64.UrlSafe.decode(base64Header).decodeToString()
     Log.d("aaa", "custom: $originalHeader $base64Header")
