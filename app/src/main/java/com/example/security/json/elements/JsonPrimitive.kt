@@ -1,20 +1,10 @@
-@file:Suppress("KotlinConstantConditions", "unused")
+@file:Suppress("unused")
 
-package com.example.security.json
+package com.example.security.json.elements
 
-import kotlinx.serialization.SerializationException
-
-/**
- * Class representing single JSON element.
- * Can be [JsonPrimitive], [JsonArray] or [JsonObject].
- *
- * [JsonElement.toString] properly prints JSON tree as valid JSON, taking into account quoted values and primitives.
- * Whole hierarchy is serializable, but only when used with Json as [JsonElement] is purely JSON-specific structure,
- * which has a meaningful schemaless semantics only for JSON.
- *
- * The hierarchy is [serializable][Serializable] only by Json format.
- */
-sealed class JsonElement
+import com.example.security.json.annotation.ExperimentalJsonApi
+import com.example.security.json.exception.JsonEncodingException
+import com.example.security.json.utlis.toBooleanStrictOrNull
 
 /**
  * Class representing JSON primitive value.
@@ -54,7 +44,7 @@ fun JsonPrimitive(value: Number?): JsonPrimitive {
  *
  * The value will be encoded as a JSON number.
  */
-@ExperimentalSerializationApi
+@ExperimentalJsonApi
 fun JsonPrimitive(value: UByte): JsonPrimitive = JsonPrimitive(value.toULong())
 
 /**
@@ -62,7 +52,7 @@ fun JsonPrimitive(value: UByte): JsonPrimitive = JsonPrimitive(value.toULong())
  *
  * The value will be encoded as a JSON number.
  */
-@ExperimentalSerializationApi
+@ExperimentalJsonApi
 fun JsonPrimitive(value: UShort): JsonPrimitive = JsonPrimitive(value.toULong())
 
 /**
@@ -70,7 +60,7 @@ fun JsonPrimitive(value: UShort): JsonPrimitive = JsonPrimitive(value.toULong())
  *
  * The value will be encoded as a JSON number.
  */
-@ExperimentalSerializationApi
+@ExperimentalJsonApi
 fun JsonPrimitive(value: UInt): JsonPrimitive = JsonPrimitive(value.toULong())
 
 /**
@@ -78,7 +68,7 @@ fun JsonPrimitive(value: UInt): JsonPrimitive = JsonPrimitive(value.toULong())
  *
  * The value will be encoded as a JSON number.
  */
-@ExperimentalSerializationApi
+@ExperimentalJsonApi
 fun JsonPrimitive(value: ULong): JsonPrimitive = JsonUnquotedLiteral(value.toString())
 
 /** Creates a [JsonPrimitive] from the given string. */
@@ -88,7 +78,7 @@ fun JsonPrimitive(value: String?): JsonPrimitive {
 }
 
 /** Creates [JsonNull]. */
-@ExperimentalSerializationApi
+@ExperimentalJsonApi
 @Suppress("FunctionName", "UNUSED_PARAMETER") // allows to call `JsonPrimitive(null)`
 fun JsonPrimitive(value: Nothing?): JsonNull = JsonNull
 
@@ -110,7 +100,7 @@ fun JsonPrimitive(value: Nothing?): JsonNull = JsonNull
  * @see JsonPrimitive is the preferred method for encoding JSON primitives.
  * @throws JsonEncodingException if `value == "null"`
  */
-@ExperimentalSerializationApi
+@ExperimentalJsonApi
 @Suppress("FunctionName")
 fun JsonUnquotedLiteral(value: String?): JsonPrimitive {
   return when (value) {
@@ -119,80 +109,6 @@ fun JsonUnquotedLiteral(value: String?): JsonPrimitive {
     else -> JsonLiteral(value, isString = false)
   }
 }
-
-/**
- * Generic exception indicating a problem with JSON serialization and deserialization.
- */
-internal open class JsonException(message: String) : SerializationException(message)
-
-/**
- * Thrown when Json has didn't create a JSON string from the given value.
- */
-internal class JsonEncodingException(message: String) : JsonException(message)
-
-internal class JsonLiteral internal constructor(
-  body: Any,
-  override val isString: Boolean,
-) : JsonPrimitive() {
-  override val content: String = body.toString()
-
-  override fun toString(): String =
-    if (isString) buildString { printQuoted(content) }
-    else content
-
-  // Compare by `content` and `isString`, because body can be kotlin.Long=42 or kotlin.String="42"
-  @Suppress("RedundantIf")
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (other == null || this::class != other::class) return false
-    other as JsonLiteral
-    if (isString != other.isString) return false
-    if (content != other.content) return false
-    return true
-  }
-
-  override fun hashCode(): Int {
-    var result = isString.hashCode()
-    result = 31 * result + content.hashCode()
-    return result
-  }
-}
-
-/**
- * Class representing JSON `null` value
- */
-object JsonNull : JsonPrimitive() {
-  override val isString: Boolean get() = false
-  override val content: String = NULL
-}
-
-/**
- * Convenience method to get current element as [JsonPrimitive]
- * @throws IllegalArgumentException if current element is not a [JsonPrimitive]
- */
-val JsonElement.jsonPrimitive: JsonPrimitive
-  get() = this as? JsonPrimitive ?: error("JsonPrimitive")
-
-/**
- * Convenience method to get current element as [JsonObject]
- * @throws IllegalArgumentException if current element is not a [JsonObject]
- */
-val JsonElement.jsonObject: JsonObject
-  get() = this as? JsonObject ?: error("JsonObject")
-
-/**
- * Convenience method to get current element as [JsonArray]
- * @throws IllegalArgumentException if current element is not a [JsonArray]
- */
-val JsonElement.jsonArray: JsonArray
-  get() = this as? JsonArray ?: error("JsonArray")
-
-/**
- * Convenience method to get current element as [JsonNull]
- * @throws IllegalArgumentException if current element is not a [JsonNull]
- */
-val JsonElement.jsonNull: JsonNull
-  get() = this as? JsonNull ?: error("JsonNull")
 
 /**
  * Returns content of the current element as int
@@ -255,6 +171,3 @@ val JsonPrimitive.booleanOrNull: Boolean? get() = content.toBooleanStrictOrNull(
  * Content of the given element without quotes or `null` if current element is [JsonNull]
  */
 val JsonPrimitive.contentOrNull: String? get() = if (this is JsonNull) null else content
-
-private fun JsonElement.error(element: String): Nothing =
-  throw IllegalArgumentException("Element ${this::class} is not a $element")

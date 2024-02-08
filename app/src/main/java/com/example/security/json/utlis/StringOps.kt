@@ -1,6 +1,8 @@
 @file:Suppress("KotlinConstantConditions")
 
-package com.example.security.json
+package com.example.security.json.utlis
+
+import com.example.security.json.constants.STRING
 
 private fun toHexChar(i: Int): Char {
   val d = i and 0xf

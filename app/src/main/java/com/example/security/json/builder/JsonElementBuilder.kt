@@ -1,19 +1,20 @@
 @file:OptIn(ExperimentalContracts::class)
 @file:Suppress("unused")
 
-package com.example.security.json
+package com.example.security.json.builder
 
-import com.example.security.json.JsonSortStrategy.ALPHABET_ASCENDING
-import com.example.security.json.JsonSortStrategy.ALPHABET_DESCENDING
-import com.example.security.json.JsonSortStrategy.HASH_CODE
-import com.example.security.json.JsonSortStrategy.NONE
+import com.example.security.json.annotation.ExperimentalJsonApi
+import com.example.security.json.elements.JsonArray
+import com.example.security.json.elements.JsonElement
+import com.example.security.json.elements.JsonNull
+import com.example.security.json.elements.JsonObject
+import com.example.security.json.elements.JsonPrimitive
+import com.example.security.json.utlis.JsonSortStrategy
+import com.example.security.json.utlis.JsonSortStrategy.ALPHABET_ASCENDING
+import com.example.security.json.utlis.JsonSortStrategy.NONE
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
-
-enum class JsonSortStrategy {
-  NONE, HASH_CODE, ALPHABET_ASCENDING, ALPHABET_DESCENDING
-}
 
 /**
  * Builds [JsonObject] with the given [builderAction] builder.
@@ -62,70 +63,6 @@ inline fun buildSortedJsonObject(
   val builder = JsonObject.Builder()
   builder.builderAction()
   return builder.build(ALPHABET_ASCENDING)
-}
-
-/**
- * Class representing JSON object, consisting of name-value pairs, where value is arbitrary [JsonElement]
- *
- * Since this class also implements [Map] interface, you can use
- * traditional methods like [Map.get] or [Map.getValue] to get Json elements.
- */
-class JsonObject(
-  private val content: List<Pair<String, JsonElement>>,
-  private val sortStrategy: JsonSortStrategy
-) : JsonElement() {
-  override fun equals(other: Any?): Boolean = content == other
-  override fun hashCode(): Int = content.hashCode()
-  override fun toString(): String {
-    return (when (sortStrategy) {
-      NONE -> content
-      HASH_CODE -> content.sortedBy { it.hashCode() }
-      ALPHABET_ASCENDING -> content.sortedBy { it.first }
-      ALPHABET_DESCENDING -> content.sortedByDescending { it.first }
-    }).joinToString(
-      separator = COMMA,
-      prefix = BEGIN_OBJ,
-      postfix = END_OBJ,
-      transform = { (k, v) ->
-        buildString {
-          printQuoted(k)
-          append(COLON)
-          append(v)
-        }
-      }
-    )
-  }
-
-  /**
-   * DSL builder for a [JsonObject]. To create an instance of builder, use [buildJsonObject] build function.
-   */
-  @JsonDslMarker
-  class Builder @PublishedApi internal constructor() {
-    private val content: MutableList<Pair<String, JsonElement>> = mutableListOf()
-
-    /**
-     * Add the given JSON [element] to a resulting JSON object using the given [key].
-     *
-     * Returns the previous value associated with [key], or `null` if the key was not present.
-     */
-    fun put(key: String, element: JsonElement): JsonElement? {
-      val pair = Pair(key, element)
-      val indexOf = content.indexOfFirst { it.first == key }
-
-      return if (indexOf == -1) { // New JsonElement
-        content.add(pair)
-        null
-      } else {
-        val previousElement = content[indexOf]
-        content.removeAt(indexOf)
-        content.add(indexOf, pair)
-        previousElement.second
-      }
-    }
-
-    @PublishedApi
-    internal fun build(sortBy: JsonSortStrategy): JsonObject = JsonObject(content, sortBy)
-  }
 }
 
 /**
@@ -188,13 +125,9 @@ fun JsonObject.Builder.put(key: String, value: String?): JsonElement? =
  *
  * Returns the previous value associated with [key], or `null` if the key was not present.
  */
-@ExperimentalSerializationApi
-@Suppress("UNUSED_PARAMETER") // allows to call `put("key", null)`
+@ExperimentalJsonApi
+@Suppress("UNUSED_PARAMETER") // allows to call `put(“key”, null)`
 fun JsonObject.Builder.put(key: String, value: Nothing?): JsonElement? = put(key, JsonNull)
-
-@DslMarker
-internal annotation class JsonDslMarker
-annotation class ExperimentalSerializationApi
 
 /**
  * Builds [JsonArray] with the given [builderAction] builder.
@@ -216,53 +149,6 @@ inline fun buildJsonArray(builderAction: JsonArray.Builder.() -> Unit): JsonArra
   val builder = JsonArray.Builder()
   builder.builderAction()
   return builder.build()
-}
-
-/**
- * Class representing JSON array, consisting of indexed values, where value is arbitrary [JsonElement]
- *
- * Since this class also implements [List] interface, you can use
- * traditional methods like [List.get] or [List.getOrNull] to get Json elements.
- */
-class JsonArray(
-  private val content: List<JsonElement>
-) : JsonElement() {
-  override fun equals(other: Any?): Boolean = content == other
-  override fun hashCode(): Int = content.hashCode()
-  override fun toString(): String = content.joinToString(
-    prefix = BEGIN_LIST,
-    postfix = END_LIST,
-    separator = COMMA
-  )
-
-  /**
-   * DSL builder for a [JsonArray]. To create an instance of builder, use [buildJsonArray] build function.
-   */
-  @JsonDslMarker
-  class Builder @PublishedApi internal constructor() {
-    private val content: MutableList<JsonElement> = mutableListOf()
-
-    /**
-     * Adds the given JSON [element] to a resulting JSON array.
-     *
-     * Always returns `true` similarly to [ArrayList] specification.
-     */
-    fun add(element: JsonElement): Boolean {
-      content += element
-      return true
-    }
-
-    /**
-     * Adds the given JSON [elements] to a resulting JSON array.
-     *
-     * @return `true` if the list was changed as the result of the operation.
-     */
-    @ExperimentalSerializationApi
-    fun addAll(elements: Collection<JsonElement>): Boolean = content.addAll(elements)
-
-    @PublishedApi
-    internal fun build(): JsonArray = JsonArray(content)
-  }
 }
 
 /**
@@ -291,7 +177,7 @@ fun JsonArray.Builder.add(value: String?): Boolean = add(JsonPrimitive(value))
  *
  * Always returns `true` similarly to [ArrayList] specification.
  */
-@ExperimentalSerializationApi
+@ExperimentalJsonApi
 @Suppress("UNUSED_PARAMETER") // allows to call `add(null)`
 fun JsonArray.Builder.add(value: Nothing?): Boolean = add(JsonNull)
 
@@ -329,7 +215,7 @@ fun JsonArray.Builder.addJsonArray(
  * @return `true` if the list was changed as the result of the operation.
  */
 @JvmName("addAllStrings")
-@ExperimentalSerializationApi
+@ExperimentalJsonApi
 fun JsonArray.Builder.addAll(values: Collection<String?>): Boolean =
   addAll(values.map(::JsonPrimitive))
 
@@ -339,7 +225,7 @@ fun JsonArray.Builder.addAll(values: Collection<String?>): Boolean =
  * @return `true` if the list was changed as the result of the operation.
  */
 @JvmName("addAllBooleans")
-@ExperimentalSerializationApi
+@ExperimentalJsonApi
 fun JsonArray.Builder.addAll(values: Collection<Boolean?>): Boolean =
   addAll(values.map(::JsonPrimitive))
 
@@ -349,7 +235,7 @@ fun JsonArray.Builder.addAll(values: Collection<Boolean?>): Boolean =
  * @return `true` if the list was changed as the result of the operation.
  */
 @JvmName("addAllNumbers")
-@ExperimentalSerializationApi
+@ExperimentalJsonApi
 fun JsonArray.Builder.addAll(values: Collection<Number?>): Boolean =
   addAll(values.map(::JsonPrimitive))
 
@@ -359,7 +245,7 @@ fun JsonArray.Builder.addAll(values: Collection<Number?>): Boolean =
  * @return `true` if the list was changed as the result of the operation.
  */
 @JvmName("addAllStrings")
-@ExperimentalSerializationApi
+@ExperimentalJsonApi
 fun JsonArray.Builder.addAll(vararg values: String?): Boolean =
   addAll(values.map(::JsonPrimitive))
 
@@ -369,7 +255,7 @@ fun JsonArray.Builder.addAll(vararg values: String?): Boolean =
  * @return `true` if the list was changed as the result of the operation.
  */
 @JvmName("addAllBooleans")
-@ExperimentalSerializationApi
+@ExperimentalJsonApi
 fun JsonArray.Builder.addAll(vararg values: Boolean?): Boolean =
   addAll(values.map(::JsonPrimitive))
 
@@ -379,6 +265,6 @@ fun JsonArray.Builder.addAll(vararg values: Boolean?): Boolean =
  * @return `true` if the list was changed as the result of the operation.
  */
 @JvmName("addAllNumbers")
-@ExperimentalSerializationApi
+@ExperimentalJsonApi
 fun JsonArray.Builder.addAll(vararg values: Number?): Boolean =
   addAll(values.map(::JsonPrimitive))

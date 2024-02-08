@@ -1,4 +1,4 @@
-package com.example.security.json
+package com.example.security.json.constants
 
 // special strings
 internal const val NULL = "null"
