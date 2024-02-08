@@ -3,9 +3,17 @@
 
 package com.example.security.json
 
+import com.example.security.json.JsonSortStrategy.ALPHABET_ASCENDING
+import com.example.security.json.JsonSortStrategy.ALPHABET_DESCENDING
+import com.example.security.json.JsonSortStrategy.HASH_CODE
+import com.example.security.json.JsonSortStrategy.NONE
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
+
+enum class JsonSortStrategy {
+  NONE, HASH_CODE, ALPHABET_ASCENDING, ALPHABET_DESCENDING
+}
 
 /**
  * Builds [JsonObject] with the given [builderAction] builder.
@@ -22,11 +30,38 @@ import kotlin.contracts.contract
  * }
  * ```
  */
-inline fun buildJsonObject(builderAction: JsonObject.Builder.() -> Unit): JsonObject {
+inline fun buildJsonObject(
+  sortBy: JsonSortStrategy = NONE,
+  builderAction: JsonObject.Builder.() -> Unit
+): JsonObject {
   contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
   val builder = JsonObject.Builder()
   builder.builderAction()
-  return builder.build()
+  return builder.build(sortBy)
+}
+
+/**
+ * Builds sorted [JsonObject] with the given [builderAction] builder.
+ * Example of usage:
+ * ```
+ * val json = buildSortedJsonObject {
+ *     put("booleanKey", true)
+ *     putJsonArray("arrayKey") {
+ *         for (i in 1..10) add(i)
+ *     }
+ *     putSortedJsonObject("objectKey") {
+ *         put("stringKey", "stringValue")
+ *     }
+ * }
+ * ```
+ */
+inline fun buildSortedJsonObject(
+  builderAction: JsonObject.Builder.() -> Unit
+): JsonObject {
+  contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
+  val builder = JsonObject.Builder()
+  builder.builderAction()
+  return builder.build(ALPHABET_ASCENDING)
 }
 
 /**
@@ -36,12 +71,18 @@ inline fun buildJsonObject(builderAction: JsonObject.Builder.() -> Unit): JsonOb
  * traditional methods like [Map.get] or [Map.getValue] to get Json elements.
  */
 class JsonObject(
-  private val content: Map<String, JsonElement>
+  private val content: List<Pair<String, JsonElement>>,
+  private val sortStrategy: JsonSortStrategy
 ) : JsonElement() {
   override fun equals(other: Any?): Boolean = content == other
   override fun hashCode(): Int = content.hashCode()
   override fun toString(): String {
-    return content.entries.joinToString(
+    return (when (sortStrategy) {
+      NONE -> content
+      HASH_CODE -> content.sortedBy { it.hashCode() }
+      ALPHABET_ASCENDING -> content.sortedBy { it.first }
+      ALPHABET_DESCENDING -> content.sortedByDescending { it.first }
+    }).joinToString(
       separator = COMMA,
       prefix = BEGIN_OBJ,
       postfix = END_OBJ,
@@ -60,40 +101,63 @@ class JsonObject(
    */
   @JsonDslMarker
   class Builder @PublishedApi internal constructor() {
-    private val content: MutableMap<String, JsonElement> = linkedMapOf()
+    private val content: MutableList<Pair<String, JsonElement>> = mutableListOf()
 
     /**
      * Add the given JSON [element] to a resulting JSON object using the given [key].
      *
      * Returns the previous value associated with [key], or `null` if the key was not present.
      */
-    fun put(key: String, element: JsonElement): JsonElement? = content.put(key, element)
+    fun put(key: String, element: JsonElement): JsonElement? {
+      val pair = Pair(key, element)
+      val indexOf = content.indexOfFirst { it.first == key }
+
+      return if (indexOf == -1) { // New JsonElement
+        content.add(pair)
+        null
+      } else {
+        val previousElement = content[indexOf]
+        content.removeAt(indexOf)
+        content.add(indexOf, pair)
+        previousElement.second
+      }
+    }
 
     @PublishedApi
-    internal fun build(): JsonObject = JsonObject(content)
+    internal fun build(sortBy: JsonSortStrategy): JsonObject = JsonObject(content, sortBy)
   }
 }
 
 /**
- * Add the [JSON object][JsonObject] produced by the [builderAction] function to a resulting JSON object using the given [key].
+ * Add the [JsonObject] produced by the [builderAction] function to a resulting JSON object using the given [key].
  *
  * Returns the previous value associated with [key], or `null` if the key was not present.
  */
 fun JsonObject.Builder.putJsonObject(
   key: String,
+  sortBy: JsonSortStrategy = NONE,
   builderAction: JsonObject.Builder.() -> Unit
-): JsonElement? = put(key, buildJsonObject(builderAction))
+): JsonElement? = put(key, buildJsonObject(sortBy, builderAction))
 
-///**
-// * Add the [JSON array][JsonArray] produced by the [builderAction] function to a resulting JSON object using the given [key].
-// *
-// * Returns the previous value associated with [key], or `null` if the key was not present.
-// */
-//fun JsonObject.Builder.putJsonArray(
-//  key: String,
-//  builderAction: JsonArrayBuilder.() -> Unit
-//): JsonElement? =
-//  put(key, buildJsonArray(builderAction))
+/**
+ * Add the sorted [JsonObject] produced by the [builderAction] function to a resulting JSON object using the given [key].
+ *
+ * Returns the previous value associated with [key], or `null` if the key was not present.
+ */
+fun JsonObject.Builder.putSortedJsonObject(
+  key: String,
+  builderAction: JsonObject.Builder.() -> Unit
+): JsonElement? = put(key, buildJsonObject(ALPHABET_ASCENDING, builderAction))
+
+/**
+ * Add the [JsonArray] produced by the [builderAction] function to a resulting JSON object using the given [key].
+ *
+ * Returns the previous value associated with [key], or `null` if the key was not present.
+ */
+fun JsonObject.Builder.putJsonArray(
+  key: String,
+  builderAction: JsonArray.Builder.() -> Unit
+): JsonElement? = put(key, buildJsonArray(builderAction))
 
 /**
  * Add the given boolean [value] to a resulting JSON object using the given [key].
@@ -153,7 +217,6 @@ inline fun buildJsonArray(builderAction: JsonArray.Builder.() -> Unit): JsonArra
   builder.builderAction()
   return builder.build()
 }
-
 
 /**
  * Class representing JSON array, consisting of indexed values, where value is arbitrary [JsonElement]
@@ -233,20 +296,32 @@ fun JsonArray.Builder.add(value: String?): Boolean = add(JsonPrimitive(value))
 fun JsonArray.Builder.add(value: Nothing?): Boolean = add(JsonNull)
 
 /**
- * Adds the [JSON object][JsonObject] produced by the [builderAction] function to a resulting JSON array.
+ * Adds the [JsonObject] produced by the [builderAction] function to a resulting JSON array.
  *
  * Always returns `true` similarly to [ArrayList] specification.
  */
-fun JsonArray.Builder.addJsonObject(builderAction: JsonObject.Builder.() -> Unit): Boolean =
-  add(buildJsonObject(builderAction))
+fun JsonArray.Builder.addJsonObject(
+  sortBy: JsonSortStrategy = NONE,
+  builderAction: JsonObject.Builder.() -> Unit
+): Boolean = add(buildJsonObject(sortBy, builderAction))
 
 /**
- * Adds the [JSON array][JsonArray] produced by the [builderAction] function to a resulting JSON array.
+ * Adds the sorted [JsonObject] produced by the [builderAction] function to a resulting JSON array.
  *
  * Always returns `true` similarly to [ArrayList] specification.
  */
-fun JsonArray.Builder.addJsonArray(builderAction: JsonArray.Builder.() -> Unit): Boolean =
-  add(buildJsonArray(builderAction))
+fun JsonArray.Builder.addSortedJsonObject(
+  builderAction: JsonObject.Builder.() -> Unit
+): Boolean = add(buildJsonObject(ALPHABET_ASCENDING, builderAction))
+
+/**
+ * Adds the [JsonArray] produced by the [builderAction] function to a resulting JSON array.
+ *
+ * Always returns `true` similarly to [ArrayList] specification.
+ */
+fun JsonArray.Builder.addJsonArray(
+  builderAction: JsonArray.Builder.() -> Unit
+): Boolean = add(buildJsonArray(builderAction))
 
 /**
  * Adds the given string [values] to a resulting JSON array.
@@ -276,4 +351,34 @@ fun JsonArray.Builder.addAll(values: Collection<Boolean?>): Boolean =
 @JvmName("addAllNumbers")
 @ExperimentalSerializationApi
 fun JsonArray.Builder.addAll(values: Collection<Number?>): Boolean =
+  addAll(values.map(::JsonPrimitive))
+
+/**
+ * Adds the given string [values] to a resulting JSON array.
+ *
+ * @return `true` if the list was changed as the result of the operation.
+ */
+@JvmName("addAllStrings")
+@ExperimentalSerializationApi
+fun JsonArray.Builder.addAll(vararg values: String?): Boolean =
+  addAll(values.map(::JsonPrimitive))
+
+/**
+ * Adds the given boolean [values] to a resulting JSON array.
+ *
+ * @return `true` if the list was changed as the result of the operation.
+ */
+@JvmName("addAllBooleans")
+@ExperimentalSerializationApi
+fun JsonArray.Builder.addAll(vararg values: Boolean?): Boolean =
+  addAll(values.map(::JsonPrimitive))
+
+/**
+ * Adds the given numeric [values] to a resulting JSON array.
+ *
+ * @return `true` if the list was changed as the result of the operation.
+ */
+@JvmName("addAllNumbers")
+@ExperimentalSerializationApi
+fun JsonArray.Builder.addAll(vararg values: Number?): Boolean =
   addAll(values.map(::JsonPrimitive))

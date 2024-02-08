@@ -2,7 +2,6 @@
 
 package com.example.security.json
 
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
 
 /**
