@@ -71,6 +71,7 @@ dependencies {
   implementation(libs.core.ktx)
   implementation(libs.appcompat)
 
+  implementation(libs.okio)
   implementation(libs.nimbus.jose.jwt)
   implementation(libs.jetbrains.kotlinx.serialization.json)
 
