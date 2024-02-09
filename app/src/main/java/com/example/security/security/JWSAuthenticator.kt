@@ -9,6 +9,7 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import com.example.security.json.builder.buildSortedJsonObject
 import com.example.security.json.builder.put
+import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.JWSObject
@@ -20,77 +21,102 @@ import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.PrivateKey
+import java.security.PublicKey
 import java.security.Signature
-import java.security.cert.Certificate
 import java.security.interfaces.RSAPublicKey
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
 class JWSAuthenticator {
   private val keyStore by lazy {
-    KeyStore.getInstance("AndroidKeyStore").apply {
-      load(null)
-    }
+    KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
   }
 
+  @RequiresApi(Build.VERSION_CODES.M)
+  private fun getJwsKey(): KeyPair = getKeyPair("rsa") ?: generateKeyPair("rsa")
+
+  @Synchronized
   private fun getKeyPair(alias: String): KeyPair? {
-    val key: PrivateKey? = keyStore.getKey(alias, null) as? PrivateKey
-    val cert: Certificate? = keyStore.getCertificate(alias)
-    if (key != null && cert != null) {
-      return KeyPair(cert.publicKey, key)
+    val privateKey: PrivateKey? = keyStore?.getKey(alias, null) as? PrivateKey
+    val publicKey: PublicKey? = keyStore?.getCertificate(alias)?.publicKey
+
+    if (privateKey != null && publicKey != null) {
+      return KeyPair(publicKey, privateKey)
     }
     return null
   }
 
   @RequiresApi(Build.VERSION_CODES.M)
-  private fun getRSAKey(): KeyPair {
-    return getKeyPair("rsa") ?: run {
-      KeyPairGenerator
-        .getInstance(KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore")
-        .apply {
-          initialize(
-            KeyGenParameterSpec
-              .Builder("rsa", SIGNATURE_PURPOSE)
-              .setKeySize(2048)
-              .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
-              .setDigests(KeyProperties.DIGEST_SHA256)
-              .setUserAuthenticationRequired(false)
-              .build()
-          )
-        }
-        .generateKeyPair()
+  @Synchronized
+  private fun generateKeyPair(alias: String): KeyPair = KeyPairGenerator
+    .getInstance(KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore")
+    .apply {
+      initialize(
+        KeyGenParameterSpec
+          .Builder(alias, SIGNATURE_PURPOSE)
+          .setKeySize(2048)
+          .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
+          .setDigests(KeyProperties.DIGEST_SHA256)
+          .setUserAuthenticationRequired(false)
+          .build()
+      )
     }
+    .generateKeyPair()
+
+  private inline fun JWSHeader(
+    alg: JWSAlgorithm,
+    builderAction: JWSHeader.Builder.() -> Unit
+  ): JWSHeader {
+    val builder = JWSHeader.Builder(alg)
+    builder.builderAction()
+    return builder.build()
+  }
+
+  private fun createJWSObject(
+    jwk: RSAKey,
+    header: Map<String, String>,
+    payload: String,
+    attachPublicKey: Boolean
+  ): JWSObject {
+    val jwsHeader = JWSHeader(JWSAlgorithm.RS256) {
+      if (attachPublicKey) jwk(jwk)
+      keyID(jwk.keyID)
+      header.forEach { (key, value) ->
+        customParam(key, value)
+      }
+      base64URLEncodePayload(true)
+      type(JOSEObjectType.JWT)
+    }
+    val detachedPayload = Payload(payload)
+    return JWSObject(jwsHeader, detachedPayload)
   }
 
   @OptIn(ExperimentalEncodingApi::class)
   @RequiresApi(Build.VERSION_CODES.M)
   fun jwsTest() {
     // Generate an RSA key pair
-    val rsaKeyPair = getRSAKey()
+    val rsaKeyPair = getJwsKey()
     val rsaKey = RSAKey
       .Builder(rsaKeyPair.public as RSAPublicKey)
       .privateKey(rsaKeyPair.private)
+      .keyIDFromThumbprint()
       .build()
     val rsaPublicKey = rsaKey.toRSAPublicKey()
     val rsaPrivateKey = rsaKeyPair.private
-
-    // RSA signatures require a public and private RSA key pair,
-    // the public key must be made known to the JWS recipient to
-    // allow the signatures to be verified.
-//    val rsaJWK = RSAKeyGenerator(2048)
-//      .keyID("123")
-//      .generate()
-//    val rsaPublicJWK = rsaJWK.toPublicJWK()
 
     // Create RSA-signer with the private key
     val signer = RSASSASigner(rsaPrivateKey)
 
     // Prepare JWS object with simple string as payload
-    var jwsObject = JWSObject(
-      JWSHeader.Builder(JWSAlgorithm.RS256)
-        .keyID(rsaKey.keyID)
-        .build(),
-      Payload("In RSA we trust!")
+    var jwsObject = createJWSObject(
+      jwk = rsaKey,
+      header = mapOf(
+        JWS_HEADER_ACTION to "GET",
+        JWS_HEADER_METHOD to "getStepOrder",
+        JWS_HEADER_TIMESTAMP to "2/9/2024"
+      ),
+      payload = "In RSA we trust!",
+      attachPublicKey = false
     )
 
     // Compute the RSA signature
@@ -111,7 +137,14 @@ class JWSAuthenticator {
     Log.d("aaa", "payload: ${jwsObject.payload}")
     Log.d("aaa", "header: ${jwsObject.header}")
 
-    val header = buildSortedJsonObject { put("alg", "RS256") }.toString()
+    val header = buildSortedJsonObject {
+      put("alg", "RS256")
+      put("typ", "JWT")
+      put("ra-timestamp", "2/9/2024")
+      put("ra-method", "getStepOrder")
+      put("ra-action", "GET")
+      put("kid", "JSJe55WVX90cTVB_5iq-VDNDI84Il3HcORovrTo-pCM")
+    }.toString()
     val base64Header = Base64.UrlSafe.encode(header.encodeToByteArray())
     val originalHeader = Base64.UrlSafe.decode(base64Header).decodeToString()
     Log.d("aaa", "custom: $originalHeader $base64Header")
@@ -128,10 +161,24 @@ class JWSAuthenticator {
     val signedData = Base64.UrlSafe.encode(sign.sign()).replace("=", "")
     val jws = "$signingData.$signedData"
     Log.d("aaa", "custom jws: $jws")
+
+    jwsObject = JWSObject.parse(jws)
+    val verifier2 = RSASSAVerifier(rsaPublicKey)
+
+    jwsObject.verify(verifier2)
+
+    Log.d("aaa", "verify: ${jwsObject.verify(verifier2)}")
+    Log.d("aaa", "signature: ${jwsObject.signature}")
+    Log.d("aaa", "payload: ${jwsObject.payload}")
+    Log.d("aaa", "header: ${jwsObject.header}")
   }
 
   companion object {
     @RequiresApi(Build.VERSION_CODES.M)
     private const val SIGNATURE_PURPOSE = PURPOSE_SIGN or PURPOSE_VERIFY
+
+    private const val JWS_HEADER_TIMESTAMP = "ra-timestamp"
+    private const val JWS_HEADER_ACTION = "ra-action"
+    private const val JWS_HEADER_METHOD = "ra-method"
   }
 }
