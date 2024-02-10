@@ -143,7 +143,7 @@ class JWSAuthenticator {
 
     // To serialize to compact form, produces something
     val jwsString = jwsObject.serialize()
-    Log.d("aaa", "jwe: $jwsString")
+    Log.d("aaa", "jws: $jwsString")
 
     // To parse the JWS and verify it, e.g. on client-side
     jwsObject = JWSObject.parse(jwsString)
@@ -155,6 +155,8 @@ class JWSAuthenticator {
     Log.d("aaa", "signature: ${jwsObject.signature}")
     Log.d("aaa", "payload: ${jwsObject.payload}")
     Log.d("aaa", "header: ${jwsObject.header}")
+
+    Log.d("aaa", "rsa key: ${rsaPublicKey.base64UrlEncoded}")
 
     val header = buildSortedJsonObject {
       put("alg", "RS256")
@@ -224,6 +226,12 @@ class JWSAuthenticator {
     private const val JWS_HEADER_METHOD = "ra-method"
   }
 }
+
+@ExperimentalEncodingApi
+private val RSAPublicKey.base64UrlEncoded: String
+  get() = Base64.UrlSafe
+    .encode(encoded)
+    .removeBase64UrlPadding()
 
 @ExperimentalEncodingApi
 private val RSAPublicKey.base64UrlPublicExponent: String
