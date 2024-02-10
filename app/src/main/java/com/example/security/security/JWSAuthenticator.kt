@@ -19,6 +19,7 @@ import com.nimbusds.jose.JWSObject
 import com.nimbusds.jose.Payload
 import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jose.crypto.RSASSAVerifier
+import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.RSAKey
 import java.math.BigInteger
 import java.security.KeyPair
@@ -77,7 +78,7 @@ class JWSAuthenticator {
   }
 
   private fun createJWSObject(
-    jwk: RSAKey,
+    jwk: JWK,
     header: Map<String, String>,
     payload: String,
     attachPublicKey: Boolean
@@ -127,7 +128,7 @@ class JWSAuthenticator {
 
     // Prepare JWS object with simple string as payload
     var jwsObject = createJWSObject(
-      jwk = rsaKey,
+      jwk = rsaKey.toPublicJWK(),
       header = mapOf(
         JWS_HEADER_ACTION to "GET",
         JWS_HEADER_METHOD to "getStepOrder",
