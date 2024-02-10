@@ -156,7 +156,8 @@ class JWSAuthenticator {
     Log.d("aaa", "payload: ${jwsObject.payload}")
     Log.d("aaa", "header: ${jwsObject.header}")
 
-    Log.d("aaa", "rsa key: ${rsaPublicKey.base64UrlEncoded}")
+    Log.d("aaa", "rsa key base64Url: ${rsaPublicKey.base64UrlEncoded}")
+    Log.d("aaa", "rsa key pem: ${rsaPublicKey.pem}")
 
     val header = buildSortedJsonObject {
       put("alg", "RS256")
@@ -232,6 +233,17 @@ private val RSAPublicKey.base64UrlEncoded: String
   get() = Base64.UrlSafe
     .encode(encoded)
     .removeBase64UrlPadding()
+
+@ExperimentalEncodingApi
+private val RSAPublicKey.pem: String
+  get() = buildString {
+    val publicKeyContent = Base64.Default.encode(encoded).removeBase64UrlPadding()
+    append("-----BEGIN PUBLIC KEY-----\n")
+    for (row in publicKeyContent.chunked(64)) {
+      append(row + "\n")
+    }
+    append("-----END PUBLIC KEY-----")
+  }
 
 @ExperimentalEncodingApi
 private val RSAPublicKey.base64UrlPublicExponent: String
