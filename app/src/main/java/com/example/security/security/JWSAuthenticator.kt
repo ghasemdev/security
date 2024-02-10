@@ -9,7 +9,9 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import okio.ByteString.Companion.toByteString
 import com.example.security.json.builder.buildJsonObject
+import com.example.security.json.builder.buildSortedJsonObject
 import com.example.security.json.builder.put
+import com.example.security.json.builder.putJsonObject
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -26,8 +28,8 @@ import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.PrivateKey
 import java.security.PublicKey
+import java.security.Signature
 import java.security.interfaces.ECPublicKey
-import java.security.interfaces.RSAPublicKey
 import java.security.spec.ECGenParameterSpec
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
@@ -97,11 +99,12 @@ class JWSAuthenticator {
     return JWSObject(jwsHeader, detachedPayload)
   }
 
-  private fun computeThumbprint(publicExponent: String, modulus: String, alg: String): String {
+  private fun computeThumbprint(crv: String, x: String, y: String, alg: String): String {
     val requiredParams = buildJsonObject {
-      put("e", publicExponent) // RSA_EXPONENT
+      put("crv", crv) // ELLIPTIC_CURVE
       put("kty", alg) // KEY_TYPE
-      put("n", modulus) // RSA_MODULUS
+      put("x", x) // ELLIPTIC_CURVE_X_COORDINATE
+      put("y", y) // ELLIPTIC_CURVE_Y_COORDINATE
     }.toString()
 
     return requiredParams
@@ -159,64 +162,68 @@ class JWSAuthenticator {
     Log.d("aaa", "rsa key base64Url: ${rsaPublicKey.base64UrlEncoded}")
     Log.d("aaa", "rsa key pem: ${rsaPublicKey.pem}")
 
-//
-//    val header = buildSortedJsonObject {
-//      put("alg", "RS256")
-//      put("typ", "JWT")
-//
-//      put("ra-timestamp", "2/9/2024")
-//      put("ra-method", "getStepOrder")
-//      put("ra-action", "GET")
-//
-//      put(
-//        "kid", computeThumbprint(
-//          publicExponent = rsaPublicKey.base64UrlPublicExponent,
-//          modulus = rsaPublicKey.base64UrlModulus,
-//          alg = rsaPublicKey.algorithm
-//        )
-//      )
-//
-//      putJsonObject("jwk") {
-//        put("kty", rsaPublicKey.algorithm)
-//        put("e", rsaPublicKey.base64UrlPublicExponent)
-//        put(
-//          "kid",
-//          computeThumbprint(
-//            publicExponent = rsaPublicKey.base64UrlPublicExponent,
-//            modulus = rsaPublicKey.base64UrlModulus,
-//            alg = rsaPublicKey.algorithm
-//          )
-//        )
-//        put("n", rsaPublicKey.base64UrlModulus)
-//      }
-//    }.toString()
-//    val base64Header = Base64.UrlSafe.encode(header.encodeToByteArray())
-//    val originalHeader = Base64.UrlSafe.decode(base64Header).decodeToString()
-//    Log.d("aaa", "custom: $originalHeader $base64Header")
-//
-//    val payload = "In RSA we trust!".trim()
-//    val base64Payload = Base64.UrlSafe.encode(payload.encodeToByteArray())
-//    val originalPayload = Base64.UrlSafe.decode(base64Payload).decodeToString()
-//    Log.d("aaa", "custom: $originalPayload $base64Payload")
-//
-//    val signingData =
-//      "${base64Header.removeBase64UrlPadding()}.${base64Payload.removeBase64UrlPadding()}"
-//    val sign = Signature.getInstance("SHA256withRSA") // SHA256withECDSA
-//    sign.initSign(rsaKeyPair.private)
-//    sign.update(signingData.encodeToByteArray())
-//    val signedData = Base64.UrlSafe.encode(sign.sign()).removeBase64UrlPadding()
-//    val jws = "$signingData.$signedData"
-//    Log.d("aaa", "custom jws: $jws")
-//
-//    jwsObject = JWSObject.parse(jws)
-//    val verifier2 = RSASSAVerifier(rsaPublicKey)
-//
-//    jwsObject.verify(verifier2)
-//
-//    Log.d("aaa", "verify: ${jwsObject.verify(verifier2)}")
-//    Log.d("aaa", "signature: ${jwsObject.signature}")
-//    Log.d("aaa", "payload: ${jwsObject.payload}")
-//    Log.d("aaa", "header: ${jwsObject.header}")
+    val header = buildSortedJsonObject {
+      put("alg", "ES256")
+      put("typ", "JWT")
+
+      put("ra-timestamp", "2/9/2024")
+      put("ra-method", "getStepOrder")
+      put("ra-action", "GET")
+
+      put(
+        "kid", computeThumbprint(
+          alg = rsaPublicKey.algorithm, // EC
+          crv = Curve.forECParameterSpec(rsaPublicKey.params).toString(), // P-256
+          x = rsaPublicKey.base64UrlX,
+          y = rsaPublicKey.base64UrlY
+        )
+      )
+
+      putJsonObject("jwk") {
+        put("kty", rsaPublicKey.algorithm)
+        put("crv", Curve.forECParameterSpec(rsaPublicKey.params).toString())
+        put(
+          "kid",
+          computeThumbprint(
+            alg = rsaPublicKey.algorithm, // EC
+            crv = Curve.forECParameterSpec(rsaPublicKey.params).toString(), // P-256
+            x = rsaPublicKey.base64UrlX,
+            y = rsaPublicKey.base64UrlY
+          )
+        )
+        put("x", rsaPublicKey.base64UrlX)
+        put("y", rsaPublicKey.base64UrlY)
+      }
+    }.toString()
+    val base64Header = Base64.UrlSafe.encode(header.encodeToByteArray())
+    val originalHeader = Base64.UrlSafe.decode(base64Header).decodeToString()
+    Log.d("aaa", "custom: $originalHeader $base64Header")
+
+    val payload = "In RSA we trust!".trim()
+    val base64Payload = Base64.UrlSafe.encode(payload.encodeToByteArray())
+    val originalPayload = Base64.UrlSafe.decode(base64Payload).decodeToString()
+    Log.d("aaa", "custom: $originalPayload $base64Payload")
+
+    val signingData =
+      "${base64Header.removeBase64UrlPadding()}.${base64Payload.removeBase64UrlPadding()}"
+    val sign = Signature.getInstance("SHA256withECDSA")
+    sign.initSign(rsaKeyPair.private)
+    sign.update(signingData.encodeToByteArray())
+    val signedData = Base64.UrlSafe
+      .encode(transcodeSignatureToConcat(sign.sign(), 64))
+      .removeBase64UrlPadding()
+    val jws = "$signingData.$signedData"
+    Log.d("aaa", "custom jws: $jws")
+
+    jwsObject = JWSObject.parse(jws)
+    val verifier2 = ECDSAVerifier(rsaPublicKey)
+
+    jwsObject.verify(verifier2)
+
+    Log.d("aaa", "verify: ${jwsObject.verify(verifier2)}")
+    Log.d("aaa", "signature: ${jwsObject.signature}")
+    Log.d("aaa", "payload: ${jwsObject.payload}")
+    Log.d("aaa", "header: ${jwsObject.header}")
   }
 
   companion object {
@@ -247,15 +254,15 @@ private val PublicKey.pem: String
   }
 
 @ExperimentalEncodingApi
-private val RSAPublicKey.base64UrlPublicExponent: String
+private val ECPublicKey.base64UrlX: String
   get() = Base64.UrlSafe
-    .encode(publicExponent.toBytesUnsigned())
+    .encode(coordinate(params.curve.field.fieldSize, w.affineX))
     .removeBase64UrlPadding()
 
 @ExperimentalEncodingApi
-private val RSAPublicKey.base64UrlModulus: String
+private val ECPublicKey.base64UrlY: String
   get() = Base64.UrlSafe
-    .encode(modulus.toBytesUnsigned())
+    .encode(coordinate(params.curve.field.fieldSize, w.affineY))
     .removeBase64UrlPadding()
 
 private fun String.removeBase64UrlPadding() = replace("=", "")
@@ -291,4 +298,78 @@ private fun BigInteger.toBytesUnsigned(): ByteArray {
   val resizedBytes = ByteArray(bitlen / 8)
   System.arraycopy(bigBytes, startSrc, resizedBytes, startDst, len)
   return resizedBytes
+}
+
+/**
+ * Returns the ByteArray of the specified elliptic curve 'x',
+ * 'y' or 'd' coordinate, with leading zero padding up to the specified
+ * field size in bits.
+ *
+ * @param fieldSize  The field size in bits.
+ * @param coordinate The elliptic curve coordinate.
+ *
+ * @return The ByteArray coordinate, with leading zero padding
+ * up to the curve's field size.
+ */
+private fun coordinate(fieldSize: Int, coordinate: BigInteger): ByteArray {
+  val notPadded = coordinate.toBytesUnsigned()
+  val bytesToOutput = (fieldSize + 7) / 8
+  if (notPadded.size >= bytesToOutput) {
+    // Greater-than check to prevent exception on malformed
+    // key below
+    return notPadded
+  }
+  val padded = ByteArray(bytesToOutput)
+  System.arraycopy(notPadded, 0, padded, bytesToOutput - notPadded.size, notPadded.size)
+  return padded
+}
+
+/**
+ * Transcode the JCA ASN.1/DER-encoded signature into the concatenated
+ * R + S format expected by ECDSA JWS.
+ *
+ * @param derSignature The ASN1./DER-encoded. Must not be `null`.
+ * @param outputLength The expected length of the ECDSA JWS signature.
+ *
+ * @return The ECDSA JWS encoded signature.
+ *
+ * @throws IllegalStateException If the ASN.1/DER signature format is invalid.
+ */
+@Throws(IllegalStateException::class)
+private fun transcodeSignatureToConcat(derSignature: ByteArray, outputLength: Int): ByteArray {
+  if (derSignature.size < 8 || derSignature[0].toInt() != 48) {
+    error("Invalid ECDSA signature format")
+  }
+  val offset: Int = if (derSignature[1] > 0) {
+    2
+  } else if (derSignature[1] == 0x81.toByte()) {
+    3
+  } else {
+    error("Invalid ECDSA signature format")
+  }
+  val rLength = derSignature[offset + 1]
+  var i: Int = rLength.toInt()
+  while (i > 0 && derSignature[offset + 2 + rLength - i].toInt() == 0) {
+    i--
+  }
+  val sLength = derSignature[offset + 2 + rLength + 1]
+  var j: Int = sLength.toInt()
+  while (j > 0 && derSignature[offset + 2 + rLength + 2 + sLength - j].toInt() == 0) {
+    j--
+  }
+  var rawLen = i.coerceAtLeast(j)
+  rawLen = rawLen.coerceAtLeast(outputLength / 2)
+  if (derSignature[offset - 1].toInt() and 0xff != derSignature.size - offset || derSignature[offset - 1].toInt() and 0xff != 2 + rLength + 2 + sLength || derSignature[offset].toInt() != 2 || derSignature[offset + 2 + rLength].toInt() != 2) {
+    error("Invalid ECDSA signature format")
+  }
+  val concatSignature = ByteArray(2 * rawLen)
+  System.arraycopy(derSignature, offset + 2 + rLength - i, concatSignature, rawLen - i, i)
+  System.arraycopy(
+    derSignature,
+    offset + 2 + rLength + 2 + sLength - j,
+    concatSignature,
+    2 * rawLen - j,
+    j
+  )
+  return concatSignature
 }
