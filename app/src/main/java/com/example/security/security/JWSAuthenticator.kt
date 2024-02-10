@@ -229,13 +229,13 @@ class JWSAuthenticator {
 }
 
 @ExperimentalEncodingApi
-private val RSAPublicKey.base64UrlEncoded: String
+private val PublicKey.base64UrlEncoded: String
   get() = Base64.UrlSafe
     .encode(encoded)
     .removeBase64UrlPadding()
 
 @ExperimentalEncodingApi
-private val RSAPublicKey.pem: String
+private val PublicKey.pem: String
   get() = buildString {
     val publicKeyContent = Base64.Default.encode(encoded).removeBase64UrlPadding()
     append("-----BEGIN PUBLIC KEY-----\n")
