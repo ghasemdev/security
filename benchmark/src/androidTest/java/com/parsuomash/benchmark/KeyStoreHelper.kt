@@ -10,6 +10,7 @@ import java.security.KeyStore
 import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.Signature
+import java.security.spec.ECGenParameterSpec
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
@@ -35,13 +36,13 @@ object KeyStoreHelper {
   @RequiresApi(Build.VERSION_CODES.M)
   @Synchronized
   fun generateKeyPair(alias: String): KeyPair = KeyPairGenerator
-    .getInstance(KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore")
+    .getInstance(KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore")
     .apply {
       initialize(
         KeyGenParameterSpec
           .Builder(alias, SIGNATURE_PURPOSE)
-          .setKeySize(2048)
-          .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
+          .setKeySize(256)
+          .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
           .setDigests(KeyProperties.DIGEST_SHA256)
           .setUserAuthenticationRequired(false)
           .build()
@@ -52,7 +53,7 @@ object KeyStoreHelper {
   @OptIn(ExperimentalEncodingApi::class)
   @Synchronized
   fun sign(data: String, privateKey: PrivateKey): String {
-    val sign = Signature.getInstance("SHA256withRSA")
+    val sign = Signature.getInstance("SHA256withECDSA")
     sign.initSign(privateKey)
     sign.update(data.encodeToByteArray())
     return Base64.UrlSafe.encode(sign.sign())

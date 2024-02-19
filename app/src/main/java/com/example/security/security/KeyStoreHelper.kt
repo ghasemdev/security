@@ -9,6 +9,7 @@ import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.PrivateKey
 import java.security.PublicKey
+import java.security.spec.ECGenParameterSpec
 
 object KeyStoreHelper {
   @RequiresApi(Build.VERSION_CODES.M)
@@ -19,7 +20,7 @@ object KeyStoreHelper {
   }
 
   @RequiresApi(Build.VERSION_CODES.M)
-  fun getJwsKey(): KeyPair = getKeyPair("rsa") ?: generateKeyPair("rsa")
+  fun getJwsKey(): KeyPair = getKeyPair("ec") ?: generateKeyPair("ec")
 
   @Synchronized
   private fun getKeyPair(alias: String): KeyPair? {
@@ -35,13 +36,13 @@ object KeyStoreHelper {
   @RequiresApi(Build.VERSION_CODES.M)
   @Synchronized
   private fun generateKeyPair(alias: String): KeyPair = KeyPairGenerator
-    .getInstance(KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore")
+    .getInstance(KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore")
     .apply {
       initialize(
         KeyGenParameterSpec
           .Builder(alias, SIGNATURE_PURPOSE)
-          .setKeySize(2048)
-          .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
+          .setKeySize(256)
+          .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
           .setDigests(KeyProperties.DIGEST_SHA256)
           .setUserAuthenticationRequired(false)
           .build()
