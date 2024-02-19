@@ -1,10 +1,6 @@
 package com.example.security.security
 
 import android.os.Build
-import android.security.keystore.KeyGenParameterSpec
-import android.security.keystore.KeyProperties
-import android.security.keystore.KeyProperties.PURPOSE_SIGN
-import android.security.keystore.KeyProperties.PURPOSE_VERIFY
 import android.util.Log
 import androidx.annotation.RequiresApi
 import okio.ByteString.Companion.toByteString
@@ -12,6 +8,7 @@ import com.example.security.json.builder.buildJsonObject
 import com.example.security.json.builder.buildSortedJsonObject
 import com.example.security.json.builder.put
 import com.example.security.json.builder.putJsonObject
+import com.example.security.security.KeyStoreHelper.getJwsKey
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -22,10 +19,6 @@ import com.nimbusds.jose.crypto.RSASSAVerifier
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.RSAKey
 import java.math.BigInteger
-import java.security.KeyPair
-import java.security.KeyPairGenerator
-import java.security.KeyStore
-import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.Signature
 import java.security.interfaces.RSAPublicKey
@@ -33,41 +26,6 @@ import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
 class JWSAuthenticator {
-  private val keyStore by lazy {
-    KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-  }
-
-  @RequiresApi(Build.VERSION_CODES.M)
-  private fun getJwsKey(): KeyPair = getKeyPair("rsa") ?: generateKeyPair("rsa")
-
-  @Synchronized
-  private fun getKeyPair(alias: String): KeyPair? {
-    val privateKey: PrivateKey? = keyStore?.getKey(alias, null) as? PrivateKey
-    val publicKey: PublicKey? = keyStore?.getCertificate(alias)?.publicKey
-
-    if (privateKey != null && publicKey != null) {
-      return KeyPair(publicKey, privateKey)
-    }
-    return null
-  }
-
-  @RequiresApi(Build.VERSION_CODES.M)
-  @Synchronized
-  private fun generateKeyPair(alias: String): KeyPair = KeyPairGenerator
-    .getInstance(KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore")
-    .apply {
-      initialize(
-        KeyGenParameterSpec
-          .Builder(alias, SIGNATURE_PURPOSE)
-          .setKeySize(2048)
-          .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
-          .setDigests(KeyProperties.DIGEST_SHA256)
-          .setUserAuthenticationRequired(false)
-          .build()
-      )
-    }
-    .generateKeyPair()
-
   private inline fun JWSHeader(
     alg: JWSAlgorithm,
     builderAction: JWSHeader.Builder.() -> Unit
@@ -219,9 +177,6 @@ class JWSAuthenticator {
   }
 
   companion object {
-    @RequiresApi(Build.VERSION_CODES.M)
-    private const val SIGNATURE_PURPOSE = PURPOSE_SIGN or PURPOSE_VERIFY
-
     private const val JWS_HEADER_TIMESTAMP = "ra-timestamp"
     private const val JWS_HEADER_ACTION = "ra-action"
     private const val JWS_HEADER_METHOD = "ra-method"

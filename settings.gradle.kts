@@ -15,4 +15,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Security"
 include(":app")
- 
+include(":benchmark")
