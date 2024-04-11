@@ -6,15 +6,23 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.security.keystore.KeyProperties.PURPOSE_DECRYPT
 import android.security.keystore.KeyProperties.PURPOSE_ENCRYPT
+import android.security.keystore.KeyProperties.PURPOSE_SIGN
+import android.security.keystore.KeyProperties.PURPOSE_VERIFY
 import android.util.Log
 import androidx.annotation.RequiresApi
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWEHeader
 import com.nimbusds.jose.JWEObject
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.JWSHeader
+import com.nimbusds.jose.JWSObject
 import com.nimbusds.jose.Payload
 import com.nimbusds.jose.crypto.RSADecrypter
 import com.nimbusds.jose.crypto.RSAEncrypter
+import com.nimbusds.jose.crypto.RSASSASigner
+import com.nimbusds.jose.crypto.RSASSAVerifier
+import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.RSAKey
 import java.security.KeyPair
 import java.security.KeyPairGenerator
@@ -54,17 +62,23 @@ class JWEManager(
   }
 
   @RequiresApi(Build.VERSION_CODES.M)
-  fun getRSAKey(): KeyPair {
-    return getKeyPair("rsa-oaep") ?: run {
+  fun getRSAKey(alias: String, purpose: Int): KeyPair {
+    return getKeyPair(alias) ?: run {
       KeyPairGenerator
         .getInstance(KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore")
         .apply {
           initialize(
             KeyGenParameterSpec
-              .Builder("rsa-oaep", ENCRYPTION_PURPOSE)
+              .Builder(alias, purpose)
               .setKeySize(2048)
-              .setBlockModes(KeyProperties.BLOCK_MODE_ECB)
-              .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_OAEP)
+              .apply {
+                if (purpose == SIGNING_PURPOSE) {
+                  setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
+                } else if (purpose == ENCRYPTION_PURPOSE) {
+                  setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                  setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_OAEP)
+                }
+              }
               .setDigests(KeyProperties.DIGEST_SHA256)
               .setUserAuthenticationRequired(false)
               .build()
@@ -76,35 +90,50 @@ class JWEManager(
 
   @RequiresApi(Build.VERSION_CODES.M)
   fun jweTest() {
-    // The JWE alg and enc
-    val alg = JWEAlgorithm.RSA_OAEP_256
-    val enc = EncryptionMethod.A256GCM
-
-    // Generate an RSA key pair
-    val rsaKeyPair = getRSAKey()
-    val rsaKey = RSAKey
-      .Builder(rsaKeyPair.public as RSAPublicKey)
-      .privateKey(rsaKeyPair.private)
+    val rsaJWS = getRSAKey("rsa-jws", SIGNING_PURPOSE)
+    val senderJWK = RSAKey
+      .Builder(rsaJWS.public as RSAPublicKey)
+      .privateKey(rsaJWS.private)
+      .keyUse(KeyUse.SIGNATURE)
       .build()
-    val rsaPublicKey = rsaKey.toRSAPublicKey()
-    val rsaPrivateKey = rsaKeyPair.private
+    val senderPublicJWK = senderJWK.toRSAPublicKey()
+    val senderPrivateJWK = rsaJWS.private
+
+    val rsaJWE = getRSAKey("rsa-jwe", ENCRYPTION_PURPOSE)
+    val recipientJWK = RSAKey
+      .Builder(rsaJWE.public as RSAPublicKey)
+      .privateKey(rsaJWE.private)
+      .keyUse(KeyUse.ENCRYPTION)
+      .build()
+    val recipientPublicJWK = recipientJWK.toRSAPublicKey()
+    val recipientPrivateJWK = rsaJWE.private
 
     // Generate the Content Encryption Key (CEK)
-    val cek = getAesKey(enc)
-    Log.d("aaa", "cek: ${cek.encoded.toList()}")
+    val cek = getAesKey(EncryptionMethod.A256GCM)
+
+    var jws = JWSObject(
+      JWSHeader
+        .Builder(JWSAlgorithm.RS256)
+        .jwk(senderJWK.toPublicJWK())
+        .keyID(senderJWK.keyID)
+        .build(),
+      Payload("Hello, world!")
+    )
+    jws.sign(RSASSASigner(senderPrivateJWK))
 
     // Encrypt the JWE with the RSA public key + specified AES CEK
     var jwe = JWEObject(
-      JWEHeader(alg, enc),
-      Payload("Hello, world!")
+      JWEHeader(JWEAlgorithm.RSA_OAEP_256, EncryptionMethod.A256GCM),
+      Payload(jws.serialize(false))
     )
-    jwe.encrypt(RSAEncrypter(rsaPublicKey, cek))
+    jwe.encrypt(RSAEncrypter(recipientPublicJWK, cek))
     val jweString = jwe.serialize()
     Log.d("aaa", "jwe: $jweString")
 
     // Decrypt the JWE with the RSA private key
     jwe = JWEObject.parse(jweString)
-    jwe.decrypt(RSADecrypter(rsaPrivateKey))
+    jwe.decrypt(RSADecrypter(recipientPrivateJWK))
+
     Log.d("aaa", "payload: ${jwe.payload}")
     Log.d("aaa", "header: ${jwe.header}")
     Log.d("aaa", "iv: ${jwe.iv}")
@@ -112,13 +141,19 @@ class JWEManager(
     Log.d("aaa", "key: ${jwe.encryptedKey}")
     Log.d("aaa", "cipherText: ${jwe.cipherText}")
 
-    // Decrypt JWE with CEK directly, with the DirectDecrypter in promiscuous mode
-//    jwe = JWEObject.parse(jweString)
-//    jwe.decrypt(DirectDecrypter(cek, true))
+    jws = jwe.payload.toJWSObject()
+
+    Log.d("aaa", "payload: ${jws.payload}")
+    Log.d("aaa", "header: ${jws.header}")
+    Log.d("aaa", "signature: ${jws.signature}")
+    Log.d("aaa", "isValid: ${jws.verify(RSASSAVerifier(senderPublicJWK))}")
   }
 
   companion object {
     @RequiresApi(Build.VERSION_CODES.M)
     private const val ENCRYPTION_PURPOSE = PURPOSE_ENCRYPT or PURPOSE_DECRYPT
+
+    @RequiresApi(Build.VERSION_CODES.M)
+    private const val SIGNING_PURPOSE = PURPOSE_SIGN or PURPOSE_VERIFY
   }
 }
