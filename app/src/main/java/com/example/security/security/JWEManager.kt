@@ -10,6 +10,7 @@ import android.security.keystore.KeyProperties.PURPOSE_SIGN
 import android.security.keystore.KeyProperties.PURPOSE_VERIFY
 import android.util.Log
 import androidx.annotation.RequiresApi
+import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWEHeader
@@ -123,7 +124,10 @@ class JWEManager(
 
     // Encrypt the JWE with the RSA public key + specified AES CEK
     var jwe = JWEObject(
-      JWEHeader(JWEAlgorithm.RSA_OAEP_256, EncryptionMethod.A256GCM),
+      JWEHeader
+        .Builder(JWEAlgorithm.RSA_OAEP_256, EncryptionMethod.A256GCM)
+        .compressionAlgorithm(CompressionAlgorithm.DEF)
+        .build(),
       Payload(jws.serialize(false))
     )
     jwe.encrypt(RSAEncrypter(recipientPublicJWK, cek))

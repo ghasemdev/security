@@ -1,18 +1,18 @@
 [versions]
-agp = "8.1.1"
-material3-window-size = "1.1.2"
+agp = "8.3.2"
+material3-window-size = "1.2.1"
 nimbus-jose-jwt = "9.38-rc3"
-org-jetbrains-kotlin-android = "1.9.10"
+org-jetbrains-kotlin-android = "1.9.23"
 core-ktx = "1.12.0"
-compose = "1.5.2"
-compose-activity = "1.8.0-rc01"
-compose-compiler = "1.5.3"
-compose-lifecycle-viewmodel = "2.6.2"
+compose = "1.6.5"
+compose-activity = "1.8.2"
+compose-compiler = "1.5.11"
+compose-lifecycle-viewmodel = "2.7.0"
 junit = "4.13.2"
 androidx-test-ext-junit = "1.1.5"
 espresso-core = "3.5.1"
 appcompat = "1.6.1"
-leakcanary = "2.12"
+leakcanary = "2.13"
 
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "compose-activity" }
