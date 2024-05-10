@@ -1,6 +1,7 @@
 package com.example.security
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -13,7 +14,10 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.example.security.factorial.JavaFactorial
+import com.example.security.factorial.KotlinFactorial
 import com.example.security.ui.theme.AppTheme
+import kotlin.system.measureNanoTime
 
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,6 +25,31 @@ class MainActivity : ComponentActivity() {
     // including IME animations, and go edge-to-edge
     // This also sets up the initial system bar style based on the platform theme
     enableEdgeToEdge()
+
+    var result: String = ""
+    var nano = measureNanoTime {
+      repeat(1_000) {
+        result = JavaFactorial.calculate(10)
+      }
+    }
+    Log.d("aaa", "result: $result")
+    Log.d("aaa", "time in nano: ${nano / 1_000}")
+
+    nano = measureNanoTime {
+      repeat(1_000) {
+        result = KotlinFactorial.calculate(10)
+      }
+    }
+    Log.d("aaa", "result: $result")
+    Log.d("aaa", "time in nano: ${nano / 1_000}")
+
+    nano = measureNanoTime {
+      repeat(1_000) {
+        result = factorial(10)
+      }
+    }
+    Log.d("aaa", "result: $result")
+    Log.d("aaa", "time in nano: ${nano / 1_000}")
 
     setContent {
       val darkTheme = isSystemInDarkTheme()
@@ -59,6 +88,7 @@ class MainActivity : ComponentActivity() {
    * which is packaged with this application.
    */
   private external fun stringFromJNI(): String
+  private external fun factorial(n: Int): String
 
   companion object {
     /**
