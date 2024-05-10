@@ -2,6 +2,7 @@
 plugins {
   alias(libs.plugins.com.android.application)
   alias(libs.plugins.org.jetbrains.kotlin.android)
+  alias(libs.plugins.org.jetbrains.kotlin.plugin.serialization)
 }
 
 android {
@@ -27,8 +28,10 @@ android {
 
   buildTypes {
     release {
-      isMinifyEnabled = false
+      isMinifyEnabled = true
+      isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+      signingConfig = signingConfigs.getByName("debug")
     }
   }
   compileOptions {
@@ -69,6 +72,9 @@ android {
 dependencies {
   implementation(libs.core.ktx)
   implementation(libs.appcompat)
+
+  // Serialization
+  implementation(libs.kotlinx.serialization.json)
 
   // Compose ---------------------------------------------------------------------------------------
   implementation(libs.bundles.compose)

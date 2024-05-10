@@ -13,6 +13,7 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.example.security.data.model.ClientConfig
 import com.example.security.ui.theme.AppTheme
 
 class MainActivity : ComponentActivity() {
@@ -30,7 +31,10 @@ class MainActivity : ComponentActivity() {
           modifier = Modifier.fillMaxSize(),
           contentAlignment = Alignment.Center
         ) {
-          Text(text = stringFromJNI(), style = MaterialTheme.typography.h3)
+          Text(
+            text = ClientConfig(lastUpdate = "12345").toString(),
+            style = MaterialTheme.typography.h3
+          )
         }
       }
 
