@@ -52,6 +52,7 @@ android {
   packaging {
     resources.excludes.add("META-INF/AL2.0")
     resources.excludes.add("META-INF/LGPL2.1")
+    resources.excludes.add("META-INF/INDEX.LIST")
   }
   kotlin {
     sourceSets.debug {
@@ -72,6 +73,11 @@ android {
 dependencies {
   implementation(libs.core.ktx)
   implementation(libs.appcompat)
+
+  implementation(libs.ktor.client.core)
+  implementation(libs.ktor.client.okhttp)
+  implementation(libs.ktor.client.content.negotiation)
+  implementation(libs.ktor.serialization.kotlinx.json)
 
   // Serialization
   implementation(libs.kotlinx.serialization.json)

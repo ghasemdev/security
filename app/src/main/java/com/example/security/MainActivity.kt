@@ -1,6 +1,7 @@
 package com.example.security
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -13,15 +14,40 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.example.security.data.model.ClientConfig
+import androidx.lifecycle.lifecycleScope
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.engine.okhttp.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.request.*
+import io.ktor.serialization.kotlinx.json.*
+import com.example.security.data.model.MovieResponse
 import com.example.security.ui.theme.AppTheme
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 
 class MainActivity : ComponentActivity() {
+  val client = HttpClient(OkHttp) {
+    install(ContentNegotiation) {
+      json(
+        Json {
+          prettyPrint = true
+          ignoreUnknownKeys = true
+        }
+      )
+    }
+  }
+
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     // including IME animations, and go edge-to-edge
     // This also sets up the initial system bar style based on the platform theme
     enableEdgeToEdge()
+
+    lifecycleScope.launch {
+      val response: MovieResponse = client.get("https://moviesapi.ir/api/v1/movies").body()
+      Log.d("aaa", "onCreate: $response")
+    }
 
     setContent {
       val darkTheme = isSystemInDarkTheme()
@@ -32,7 +58,7 @@ class MainActivity : ComponentActivity() {
           contentAlignment = Alignment.Center
         ) {
           Text(
-            text = ClientConfig(lastUpdate = "12345").toString(),
+            text = "",
             style = MaterialTheme.typography.h3
           )
         }
