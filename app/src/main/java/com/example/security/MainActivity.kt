@@ -1,5 +1,6 @@
 package com.example.security
 
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -14,6 +15,7 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.core.content.edit
 import androidx.lifecycle.lifecycleScope
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -44,9 +46,22 @@ class MainActivity : ComponentActivity() {
     // This also sets up the initial system bar style based on the platform theme
     enableEdgeToEdge()
 
+    val sharedPref: SharedPreferences = applicationContext
+      .getSharedPreferences("test.pref", MODE_PRIVATE)
+
     lifecycleScope.launch {
+      val cache = sharedPref.getString("test", "null") ?: "null"
+      val movie = if (cache != "null") {
+        Json.decodeFromString(MovieResponse.serializer(), cache)
+      } else null
+      Log.d("aaa", "cache: $movie")
+
       val response: MovieResponse = client.get("https://moviesapi.ir/api/v1/movies").body()
-      Log.d("aaa", "onCreate: $response")
+      Log.d("aaa", "api: $response")
+
+      sharedPref.edit {
+        putString("test", Json.encodeToString(MovieResponse.serializer(), response))
+      }
     }
 
     setContent {
