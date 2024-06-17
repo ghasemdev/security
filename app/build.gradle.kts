@@ -1,13 +1,14 @@
 @Suppress("DSL_SCOPE_VIOLATION") // TODO: Remove once KTIJ-19369 is fixed
 plugins {
-  alias(libs.plugins.com.android.application)
-  alias(libs.plugins.org.jetbrains.kotlin.android)
+  alias(libs.plugins.android.application)
+  alias(libs.plugins.kotlin.android)
+  alias(libs.plugins.compose.compiler)
 }
 
 android {
   namespace = "com.example.security"
   compileSdk = 34
-  ndkVersion = "25.1.8937393"
+  ndkVersion = "26.3.11579264"
 
   defaultConfig {
     applicationId = "com.example.security"
@@ -26,9 +27,15 @@ android {
   }
 
   buildTypes {
-    release {
-      isMinifyEnabled = false
-      proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+    getByName("release") {
+      isMinifyEnabled = true
+      isShrinkResources = true
+      signingConfig = signingConfigs.getByName("debug")
+      proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
+    }
+    create("profileable") {
+      isDebuggable = false
+      signingConfig = signingConfigs.getByName("debug")
     }
   }
   compileOptions {
@@ -36,15 +43,13 @@ android {
     targetCompatibility = JavaVersion.VERSION_17
   }
   kotlinOptions {
-    apiVersion = "1.9"
-    languageVersion = "1.9"
     jvmTarget = "17"
   }
   buildFeatures {
     compose = true
   }
-  composeOptions {
-    kotlinCompilerExtensionVersion = libs.versions.compose.compiler.get()
+  composeCompiler {
+    enableStrongSkippingMode = true
   }
   packaging {
     resources.excludes.add("META-INF/AL2.0")
