@@ -15,6 +15,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.example.security.security.JWEManager
+import com.example.security.security.UserData
 import com.example.security.ui.theme.AppTheme
 
 class MainActivity : ComponentActivity() {
@@ -29,6 +30,8 @@ class MainActivity : ComponentActivity() {
       jweManager.jweTest()
     }
 
+    println(printUserData(createUser("Ghasem", 5.0)))
+
     setContent {
       val darkTheme = isSystemInDarkTheme()
 
@@ -37,7 +40,7 @@ class MainActivity : ComponentActivity() {
           modifier = Modifier.fillMaxSize(),
           contentAlignment = Alignment.Center
         ) {
-          Text(text = stringFromJNI(), style = MaterialTheme.typography.h3)
+          Text(text = n.s(), style = MaterialTheme.typography.h3)
         }
       }
 
@@ -61,11 +64,8 @@ class MainActivity : ComponentActivity() {
     }
   }
 
-  /**
-   * A native method that is implemented by the 'anative' native library,
-   * which is packaged with this application.
-   */
-  private external fun stringFromJNI(): String
+  private external fun createUser(name: String, balance: Double): UserData
+  private external fun printUserData(user: UserData): String
 
   companion object {
     /**
