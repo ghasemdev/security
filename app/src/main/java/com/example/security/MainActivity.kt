@@ -40,7 +40,7 @@ class MainActivity : ComponentActivity() {
           modifier = Modifier.fillMaxSize(),
           contentAlignment = Alignment.Center
         ) {
-          Text(text = n.s(), style = MaterialTheme.typography.h3)
+          Text(text = StringProvider.helloWorld, style = MaterialTheme.typography.h3)
         }
       }
 
