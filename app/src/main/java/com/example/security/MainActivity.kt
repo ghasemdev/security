@@ -1,39 +1,72 @@
 package com.example.security
 
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import okhttp3.CertificatePinner
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import com.datatheorem.android.trustkit.TrustKit
-import com.datatheorem.android.trustkit.pinning.OkHttp3Helper
 import com.example.security.ui.theme.AppTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+class MainViewModel : ViewModel() {
+  var data: String? by mutableStateOf(null)
+
+  init {
+    sslPining()
+  }
+
+  private fun sslPining() = viewModelScope.launch(Dispatchers.IO) {
+    // OkHttp 3.3.x and higher
+    val client: OkHttpClient = OkHttpClient.Builder()
+      .certificatePinner(
+        CertificatePinner.Builder()
+          .add("moviesapi.ir", "sha256/NaML600Zdn8JqRXxynWV4nSQruBcra8o7YeRUM/UD6s=")
+          .build()
+      )
+      .followRedirects(false)
+      .followSslRedirects(false)
+      .build()
+
+    val request: Request = Request.Builder()
+      .url("https://moviesapi.ir/api/v1/movies")
+      .build()
+
+    client.newCall(request).execute().use { response ->
+      data = response.body?.string()
+    }
+  }
+}
+
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-
-    sslPining()
 
     // including IME animations, and go edge-to-edge
     // This also sets up the initial system bar style based on the platform theme
     enableEdgeToEdge()
 
     setContent {
+      val viewModel: MainViewModel = viewModel()
+      val state = viewModel.data
       val darkTheme = isSystemInDarkTheme()
 
       AppTheme(darkTheme = darkTheme) {
@@ -41,7 +74,10 @@ class MainActivity : ComponentActivity() {
           modifier = Modifier.fillMaxSize(),
           contentAlignment = Alignment.Center
         ) {
-          Text(text = stringFromJNI(), style = MaterialTheme.typography.h3)
+          Column {
+            Text(text = stringFromJNI(), style = MaterialTheme.typography.h3)
+            Text(text = "$state", style = MaterialTheme.typography.body1)
+          }
         }
       }
 
@@ -61,29 +97,6 @@ class MainActivity : ComponentActivity() {
           ) { darkTheme },
         )
         onDispose {}
-      }
-    }
-  }
-
-  private fun sslPining() {
-    // Using the default path—res/xml/network_security_config.xml.
-    TrustKit.initializeWithNetworkSecurityConfiguration(this@MainActivity)
-
-    lifecycleScope.launch(Dispatchers.IO) {
-      // OkHttp 3.3.x and higher
-      val client: OkHttpClient = OkHttpClient.Builder()
-        .sslSocketFactory(OkHttp3Helper.getSSLSocketFactory(), OkHttp3Helper.getTrustManager())
-        .addInterceptor(OkHttp3Helper.getPinningInterceptor())
-        .followRedirects(false)
-        .followSslRedirects(false)
-        .build()
-
-      val request: Request = Request.Builder()
-        .url("https://moviesapi.ir/api/v1/movies")
-        .build()
-
-      client.newCall(request).execute().use { response ->
-        Log.i("SSL", "sslPining: ${response.body!!.string()}")
       }
     }
   }
