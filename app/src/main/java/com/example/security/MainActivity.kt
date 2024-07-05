@@ -45,9 +45,6 @@ class MainViewModel : ViewModel() {
   private fun sslPining() = viewModelScope.launch(Dispatchers.IO) {
     // OkHttp 3.3.x and higher
     val client: OkHttpClient = k.a(OkHttpClient.Builder().build())
-    CertificatePinner.Builder()
-      .add("moviesapi.ir", "sha256/NaML600Zdn8JqRXxynWV4nSQruBcra8o7YeRUM/UD6s=")
-      .build()
     val request: Request = Request.Builder()
       .url("https://moviesapi.ir/api/v1/movies")
       .build()
