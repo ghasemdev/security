@@ -136,7 +136,7 @@ class JWEManager {
     }
 }
 
-
+// thumbprint -> ZoX72QLJho6ByEEJWcnTt8gyPfms7cXKJP9bc9_4ywY
 private const val CERTIFICATE = "MIIGdzCCBV+gAwIBAgIQfbbIoZDR2nVM2eSSpCLJjzANBgkqhkiG9w0BAQsFADCB" +
         "hTELMAkGA1UEBhMCUEwxIjAgBgNVBAoTGVVuaXpldG8gVGVjaG5vbG9naWVzIFMu" +
         "QS4xJzAlBgNVBAsTHkNlcnR1bSBDZXJ0aWZpY2F0aW9uIEF1dGhvcml0eTEpMCcG" +
