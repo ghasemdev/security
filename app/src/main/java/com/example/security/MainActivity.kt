@@ -19,7 +19,7 @@ import com.example.security.security.UserData
 import com.example.security.ui.theme.AppTheme
 
 class MainActivity : ComponentActivity() {
-  private val jweManager = JWEManager(this)
+  private val jweManager = JWEManager()
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
